@@ -4,8 +4,8 @@ import logging
 import time
 import collections
 
-from devices.lavviebot import LavvieBot
-from cats.cat import Cat
+from lavviebot.devices.lavviebot import LavvieBot
+from lavviebot.cats.cat import Cat
 
 APP_VERSION = '2.6.0'
 DEVICE_OS = 'ios'
