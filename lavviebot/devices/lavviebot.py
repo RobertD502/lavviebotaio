@@ -12,6 +12,7 @@ class LavvieBot(object):
     def refresh(self):
         lavviebot_status = self.api.lavviebot_status(self)
         self.waste_status = lavviebot_status['wasteDrawerStatus']
+        self.top_litter_status = lavviebot_status['topLitterStatus']
         self.litter_top_amount = lavviebot_status['litterTopAmount'] / 455.1
         self.litter_bottom_amount = lavviebot_status['litterBottomAmount'] / 455.1
         self.litter_type = lavviebot_status['litterType']
