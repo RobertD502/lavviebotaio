@@ -10,6 +10,10 @@ class Cat(object):
             self.cat_name = 'Unknown'
         else:
             self.cat_name = data['catName']
+        if data['catId'] == 'Unknown':
+            self.cat_id = 'Unknown_Cat'
+        else:
+            self.cat_id = data['catId']
         self.refresh()
 
     def refresh(self):
