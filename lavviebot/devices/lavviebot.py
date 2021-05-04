@@ -21,3 +21,5 @@ class LavvieBot(object):
         self.temperature = lavviebot_status['temperature']
         self.humidity = lavviebot_status['humidity']
         self.wait_time = lavviebot_status['waitTime']
+        self.status = lavviebot_status['status']
+        self.motor_state = lavviebot_status['motorState']
