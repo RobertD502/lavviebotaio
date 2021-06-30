@@ -142,11 +142,15 @@ class LavvieBotApi:
         'timezone': TIME_ZONE
         }
         response = requests.post(CAT_INFO_URL, headers=headers, data=json.dumps(payload))
-        lavvie_bots = response.json()['res'][1]['lavviebots']
-        devices = []
-        for device in lavvie_bots:
-            devices.append(LavvieBot(device, self))
-        SESSION.devices = devices
+        status_code = response.status_code
+        if status_code == 404:
+            self.login()
+        else:
+            lavvie_bots = response.json()['res'][1]['lavviebots']
+            devices = []
+            for device in lavvie_bots:
+                devices.append(LavvieBot(device, self))
+                SESSION.devices = devices
 
     def refresh_devices(self):
         for device in SESSION.devices:
@@ -168,11 +172,15 @@ class LavvieBotApi:
         'timezone': TIME_ZONE
         }
         response = requests.post(CAT_INFO_URL, headers=headers, data=json.dumps(payload))
-        available_cats = response.json()['res'][1]['cats']
-        cats = []
-        for idx, cat in enumerate(available_cats):
-            cats.append(Cat(cat, idx, self))
-        SESSION.cats = cats
+        status_code = response.status_code
+        if status_code == 404:
+            self.login()
+        else:
+            available_cats = response.json()['res'][1]['cats']
+            cats = []
+            for idx, cat in enumerate(available_cats):
+                cats.append(Cat(cat, idx, self))
+                SESSION.cats = cats
 
     def refresh_cats(self):
         for cat in SESSION.cats:
@@ -194,7 +202,11 @@ class LavvieBotApi:
         'lavviebotId': device.lavviebot_id
         }
         response = requests.post(BOT_INFO_URL, headers=headers, data=json.dumps(payload))
-        return response.json()['res']
+        status_code = response.status_code
+        if status_code == 404:
+            self.login()
+        else:
+            return response.json()['res']
 
     def cat_status(self, cat):
         headers = {
@@ -212,7 +224,11 @@ class LavvieBotApi:
         'timezone': TIME_ZONE
         }
         response = requests.post(CAT_INFO_URL, headers=headers, data=json.dumps(payload))
-        return response.json()['res'][1]['cats']
+        status_code = response.status_code
+        if status_code == 404:
+            self.login()
+        else:
+            return response.json()['res'][1]['cats']
 
 
     def check_user_token(self):
