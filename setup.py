@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="python-lavviebot",
-    version="0.0.6",
+    version="0.0.7",
     author="Robert Drinovac",
     author_email="unlisted@gmail.com",
     description="A Python library for the Purrsong API utilized by LavvieBot S litterboxes",
