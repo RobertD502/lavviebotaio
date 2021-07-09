@@ -1,3 +1,4 @@
+#To run this locally you will need to remove "lavviebot." from "lavviebot.devices.lavviebot" and "lavviebot.cats.cat" in the lavviebotapi.py file
 import asyncio
 from lavviebotapi import LavvieBotApi
 
