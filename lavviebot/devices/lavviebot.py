@@ -1,6 +1,7 @@
 import time
 import collections
-
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 class LavvieBot(object):
     def __init__(self, data, api):
@@ -24,5 +25,8 @@ class LavvieBot(object):
             self.wait_time = lavviebot_status['waitTime']
             self.status = lavviebot_status['status']
             self.motor_state = lavviebot_status['motorState']
+            # Convert Asia/Seoul timezone to user's local timezone
+            self.last_update = datetime.fromisoformat(lavviebot_status['creationTime']).replace(tzinfo=ZoneInfo('Asia/Seoul')).astimezone()
+
         except:
             return None
