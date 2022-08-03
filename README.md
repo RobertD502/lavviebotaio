@@ -1,2 +1,2 @@
-# Python-Lavviebot
-Lavviebot Python API for interfacing with the Lavviebot S Litterbox
+# Lavviebotaio
+Lavviebot Python API for interfacing with the Lavviebot S litter box and cats
