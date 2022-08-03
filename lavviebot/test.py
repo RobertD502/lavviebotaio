@@ -6,7 +6,7 @@ from lavviebot_client import LavviebotClient
 
 async def main() -> None:
     async with ClientSession() as session:
-        client = LavviebotClient('username', 'password', session)
+        client = LavviebotClient('email', 'password', session)
         await client.login()
         await client.async_get_data()
 
