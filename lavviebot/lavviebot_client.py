@@ -12,9 +12,9 @@ from aiohttp import ClientResponse, ClientSession
 
 
 
-from lavviebot.exceptions import LavviebotAuthError, LavviebotError
-from lavviebot.model import Cat, LavviebotData, LitterBox
-from lavviebot.constants import *
+from .exceptions import LavviebotAuthError, LavviebotError
+from .model import Cat, LavviebotData, LitterBox
+from .constants import *
 
 
 class LavviebotClient:
