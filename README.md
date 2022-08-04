@@ -26,7 +26,7 @@ async def main():
     async with ClientSession() as session:
     
         # Create a client using PurrSong account email and password
-        client = LavviebotClient("username", "password", session)
+        client = LavviebotClient("email", "password", session)
 
         # Discover all litter boxes associated with account
         litter_boxes = await client.async_discover_litter_boxes()
