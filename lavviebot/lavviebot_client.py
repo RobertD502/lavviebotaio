@@ -12,9 +12,9 @@ from aiohttp import ClientResponse, ClientSession
 
 
 
-from exceptions import LavviebotAuthError, LavviebotError
-from model import Cat, LavviebotData, LitterBox
-from constants import *
+from lavviebot.exceptions import LavviebotAuthError, LavviebotError
+from lavviebot.model import Cat, LavviebotData, LitterBox
+from lavviebot.constants import *
 
 
 class LavviebotClient:
@@ -36,13 +36,15 @@ class LavviebotClient:
         self.cookie: SimpleCookie | None = None
         self.token: str | None = None
         self.has_cat: bool | None = None
+        self.user_id: int | None = None
         self.timeout: int = timeout
 
 
     async def login(self) -> None:
         """ Get cookie and token to be used in subsequent API calls """
         self.cookie = await self.get_cookie()
-        self.token, self.has_cat = await self.get_token()
+        self.token, self.has_cat, self.user_id = await self.get_token()
+        return self.user_id
 
 
     async def get_cookie(self) -> ClientResponse:
@@ -100,7 +102,7 @@ class LavviebotClient:
             raise LavviebotAuthError(message)
         else:
             data = response['data']['login']
-            return data['userToken'], data['hasCat']
+            return data['userToken'], data['hasCat'], data['userId']
 
 
     async def async_discover_cats(self) -> ClientResponse:
@@ -125,6 +127,7 @@ class LavviebotClient:
             message = response['errors'][0]['message']
             if message == "Please login again.":
                 await self.login()
+                return await self.async_discover_cats()
             else:
                 raise LavviebotError(message)
         else:
@@ -153,6 +156,7 @@ class LavviebotClient:
             message = response['errors'][0]['message']
             if message == "Please login again.":
                 await self.login()
+                return await self.async_discover_litter_boxes()
             else:
                 raise LavviebotError(message)
         else:
@@ -161,6 +165,9 @@ class LavviebotClient:
 
     async def async_get_data(self) -> LavviebotData:
         """ Return dataclass with litter boxes and cats associated with account """
+
+        if self.cookie is None or self.token is None:
+            await self.login()
         litter_boxes = []
         response = await self.async_discover_litter_boxes()
         locations = response['data']['getLocations']
@@ -274,6 +281,7 @@ class LavviebotClient:
 
         return LavviebotData(litterboxes=litter_box_data, cats=cat_data)
 
+
     async def async_fetch_all_endpoints(self, device_id: int) -> tuple[Any, Any]:
         """
         Parallel request are made to all endpoints for each litter box.
@@ -313,6 +321,7 @@ class LavviebotClient:
                 message = response['errors'][0]['message']
                 if message == "Please login again.":
                     await self.login()
+                    return await self.async_get_litter_box_status(device_id)
                 else:
                     raise LavviebotError(message)
             else:
@@ -344,6 +353,7 @@ class LavviebotClient:
                 message = response['errors'][0]['message']
                 if message == "Please login again.":
                     await self.login()
+                    return await self.async_get_litter_box_cat_log(device_id)
                 else:
                     raise LavviebotError(message)
             else:
@@ -382,6 +392,7 @@ class LavviebotClient:
                 message = response['errors'][0]['message']
                 if message == "Please login again.":
                     await self.login()
+                    return await self.async_get_unknown_status(cat_id)
                 else:
                     raise LavviebotError(message)
             else:
@@ -420,6 +431,7 @@ class LavviebotClient:
                 message = response['errors'][0]['message']
                 if message == "Please login again.":
                     await self.login()
+                    return await self.async_get_cat_status(cat_id)
                 else:
                     raise LavviebotError(message)
             else:
