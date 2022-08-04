@@ -1,7 +1,7 @@
 import asyncio
 import time
 from aiohttp import ClientSession
-from lavviebot_client import LavviebotClient
+from .lavviebot_client import LavviebotClient
 
 
 async def main() -> None:
