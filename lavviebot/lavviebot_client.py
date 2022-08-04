@@ -40,8 +40,10 @@ class LavviebotClient:
         self.timeout: int = timeout
 
 
+
     async def login(self) -> None:
         """ Get cookie and token to be used in subsequent API calls """
+
         self.cookie = await self.get_cookie()
         self.token, self.has_cat, self.user_id = await self.get_token()
         return self.user_id
@@ -49,6 +51,7 @@ class LavviebotClient:
 
     async def get_cookie(self) -> ClientResponse:
         """ Get cookie by checking PurrSong server status """
+
         headers = {
         'Accept': ACCEPT,
         'Accept-Encoding': ACCEPT_ENCODING,
@@ -73,6 +76,9 @@ class LavviebotClient:
 
     async def get_token(self):
         """ Use email/password to obtain token """
+
+        if self.cookie is None:
+            await self.login()   
         headers = {
             'Accept': ACCEPT,
             'Cookie': self.cookie,
@@ -106,7 +112,10 @@ class LavviebotClient:
 
 
     async def async_discover_cats(self) -> ClientResponse:
-        """ Gets all cats linked to PurrSong account"""
+        """ Gets all cats linked to PurrSong account """
+
+        if self.cookie is None or self.token is None:
+            await self.login()
         headers = {
         'Accept': ACCEPT,
         'Cookie': self.cookie,
@@ -136,6 +145,9 @@ class LavviebotClient:
 
     async def async_discover_litter_boxes(self) -> ClientResponse:
         """ Gets all litter boxes linked to PurrSong account """
+
+        if self.cookie is None or self.token is None:
+            await self.login()
         headers = {
             'Accept': ACCEPT,
             'Cookie': self.cookie,
@@ -233,6 +245,8 @@ class LavviebotClient:
                 last_used = last_used,
             )
 
+        """ Get all cats """
+
         cats = []
         cat_data: dict[int, Cat] = {}
         if self.has_cat:
@@ -287,6 +301,7 @@ class LavviebotClient:
         Parallel request are made to all endpoints for each litter box.
         returns a list containing latest status, and cat usage log
         """
+
         results = await asyncio.gather(*[
             self.async_get_litter_box_status(device_id),
             self.async_get_litter_box_cat_log(device_id)
@@ -296,7 +311,10 @@ class LavviebotClient:
 
 
     async def async_get_litter_box_status(self, device_id: int) -> ClientResponse:
-            """ Get most recent status available for litter box"""
+            """ Get most recent status available for litter box """
+
+            if self.cookie is None or self.token is None:
+                await self.login()
             headers = {
                 'Accept': ACCEPT,
                 'Cookie': self.cookie,
@@ -328,7 +346,10 @@ class LavviebotClient:
                 return response
 
     async def async_get_litter_box_cat_log(self, device_id: int) -> ClientResponse:
-            """ Get usage log that is associated with the litter box"""
+            """ Get usage log that is associated with the litter box """
+
+            if self.cookie is None or self.token is None:
+                await self.login()
             headers = {
                 'Accept': ACCEPT,
                 'Cookie': self.cookie,
@@ -363,6 +384,9 @@ class LavviebotClient:
 
     async def async_get_unknown_status(self, cat_id: int) -> ClientResponse:
             """ Get most recent status for Unknown cat if present """
+
+            if self.cookie is None or self.token is None:
+                await self.login()
             headers = {
                 'Accept': ACCEPT,
                 'Cookie': self.cookie,
@@ -402,6 +426,9 @@ class LavviebotClient:
 
     async def async_get_cat_status(self, cat_id: int) -> ClientResponse:
             """ Get most recent status for single cat """
+
+            if self.cookie is None or self.token is None:
+                await self.login()
             headers = {
                 'Accept': ACCEPT,
                 'Cookie': self.cookie,
@@ -442,6 +469,7 @@ class LavviebotClient:
             self, headers: dict[str, Any],
             payload: dict[str,Any], is_cookie: bool | None = None) -> SimpleCookie | ClientResponse:
         """ Make Post API call to PurrSong servers """
+        
         async with self._session.post(
                 BASE_URL, headers=headers, json=payload,
                 timeout=self.timeout) as resp:
@@ -450,6 +478,7 @@ class LavviebotClient:
     @staticmethod
     async def _response(resp: ClientResponse, is_cookie: bool) -> SimpleCookie | ClientResponse:
         """ Check response for any errors & return original response if none """
+
         if resp.status != 200:
             raise LavviebotError(f'Lavviebot API error: {resp}')
 
