@@ -6,31 +6,40 @@ ACCEPT_ENCODING = 'gzip, deflate, br'
 ACCEPT_LANGUAGE = 'en-US,en;q=0.9'
 CONNECTION = 'keep-alive'
 CONTENT_TYPE = 'application/json'
-USER_AGENT = 'purrsongAppV3/1 CFNetwork/1325.0.1 Darwin/21.1.0'
+USER_AGENT = 'purrsongAppV3/2 CFNetwork/1325.0.1 Darwin/21.1.0'
 
 # Payload
-APP_VERSION = "3.6.5"
+APP_VERSION = "3.8.3"
 LANGUAGE = 'en'
 TIME_ZONE = 'America/New_York'
 
 TIMEOUT = 5 * 60
 
-""" Query needed to obtain cookies"""
+""" Query needed to obtain cookies. """
 COOKIE_QUERY = "query CheckServerStatus($data: CheckServerStatusArgs!) {checkServerStatus(data: $data)}"
 
-""" Query needed to obtain user token"""
+""" Query needed to obtain user token. """
 TOKEN_QUERY = "mutation Login($data: LoginArgs!) {login(data: $data) {userId userToken hasCat __typename}}"
 
 """ Query to discover litter boxes"""
-DISCOVER_LB = '''query IotMainDrawerLocations {getLocations {...LocationInfo getIots
+DISCOVER_LB = '''query PurrsongTabLocations {getLocations {...LocationInfo getIots
                  {id lavviebot {nickname __typename} lavvieTag {id nickname __typename}
                  lavvieScanner {nickname __typename} pet {id cat {catMainPhoto nickname __typename} __typename} __typename} __typename}}
                  fragment LocationInfo on Location {id nickname locationRole __typename}'''
 
 """ Query to discover cats """
-DISCOVER_CATS = '''query CatMainDrawerLocations {getLocations {...LocationInfo hasUnknownCat petOrder getPetCats
-                   {id cat {catMainPhoto nickname __typename}__typename} __typename}}
-                   fragment LocationInfo on Location {id nickname locationRole __typename}'''
+DISCOVER_CATS = "query PetMain($data: PurrsongPetMainArgs!) " \
+                "{purrsongPetMain(data: $data) {location" \
+                "{id nickname hasUnknownCat hasLavviebot hasLavvieBox locationRole otherLocations" \
+                "{...LocationInfo __typename} __typename} selectedPet {...SelectedPet hasLavvieTag petClips" \
+                "{isDetectedOutlier __typename} __typename } otherPets {...OtherPetsForPetMain __typename } conditionScore dailyTotal" \
+                "{poopCount rest grooming walk run woodadaCount __typename} hourlyData" \
+                "{poopCount rest grooming walk run woodadaCount mainData __typename} __typename}} fragment LocationInfo on Location" \
+                "{id nickname locationRole __typename} fragment SelectedPet on Pet {id petType petCode cat" \
+                "{id nickname catSex catMainPhoto catAge catBirthDate catBirthDateCertainty __typename} dog" \
+                "{id nickname dogSex dogMainPhoto dogAge __typename} __typename} fragment OtherPetsForPetMain on Pet" \
+                "{id petType hasLavvieTag cat {id nickname catSex catMainPhoto catAge __typename} dog" \
+                "{id nickname dogSex dogMainPhoto __typename} petClips {isDetectedOutlier __typename} __typename}"
 
 """ Query to get status of specific litter box """
 LB_STATUS = "query GetLavviebotDetails($data: IotIdArgs!) {getIotDetail(data: $data) " \
@@ -45,10 +54,13 @@ LB_CAT_LOG = "query GetLavviebotPoopRecord($data: GetIotCatRecordArgs!) {getLavv
              "{petId nickname catMainPhoto duration creationTime __typename} nextCursor __typename}}"
 
 """ Query to get the most recent status for Unknown cat if one is present on the account"""
-UNKNOWN_STATUS = "query GetCatMainUnknownGraphData($data: GetCatMainUnknownGraphDataArgs!) " \
-                 "{getCatMainUnknownGraphData(data: $data) {graphType graphData __typename}}"
+UNKNOWN_STATUS = "query GetUnknownPoopData($data: GetUnknownPoopDataArgs!) " \
+                 "{getUnknownPoopData(data: $data) {...GraphData __typename}} fragment GraphData on PoopGraphDataResponse" \
+                 "{timezone graphType period today avg30days avgTerm graphData __typename}"
 
 """ Query to get most recent status for individual cat """
-CAT_STATUS = "query GetCatMainGraphData($data: GetCatMainGraphDataArgs!) {getCatMainGraphData(data: $data) {graphType graphData __typename}}"
+CAT_STATUS = "query GetPoopData($data: GetPoopGraphDataArgs!) " \
+             "{getPoopData(data: $data) {...GraphData __typename}} fragment GraphData on PoopGraphDataResponse" \
+             "{timezone graphType period today avg30days avgTerm graphData __typename}"
 
 
