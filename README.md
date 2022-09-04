@@ -6,9 +6,6 @@ This package provides an API client for the [PurrSong](https://purrsong.com/en/)
 
 **The API is not published by PurrSong, so it may break without notice.**
 
-# CURRENTLY BROKEN
-
-Purrsong has yet again changed their API. Message will be removed when new API is implemented.
 
 ## Installation
 
