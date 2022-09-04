@@ -31,8 +31,8 @@ async def main():
         # Discover all litter boxes associated with account
         litter_boxes = await client.async_discover_litter_boxes()
         
-        # Discover all cats associated with account
-        cats = await client.async_discover_cats()
+        # Discover all cats associated with account. Requires `location id` as an `int`.
+        cats = await client.async_discover_cats(123)
         
         # Get info pertaining to a particular litter box using device_id integer
         litter_box_status = await client.async_get_litter_box_status(device_id)
