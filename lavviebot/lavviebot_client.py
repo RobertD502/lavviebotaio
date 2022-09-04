@@ -1,20 +1,24 @@
 """Python API for Lavviebot S Litter Box"""
-
 from __future__ import annotations
+
 from typing import Any
 
-import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
 import asyncio
+
 from http.cookies import SimpleCookie
+
 from aiohttp import ClientResponse, ClientSession
-
-
 
 from .exceptions import LavviebotAuthError, LavviebotError
 from .model import Cat, LavviebotData, LitterBox
-from .constants import *
+from .constants import (ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE,
+                        APP_VERSION, BASE_URL, CAT_STATUS, CONNECTION,
+                        CONTENT_TYPE, COOKIE_QUERY, DISCOVER_CATS,
+                        DISCOVER_LB, LANGUAGE, LB_CAT_LOG, LB_STATUS,
+                        TIMEOUT, TIME_ZONE, TOKEN_QUERY, UNKNOWN_STATUS, USER_AGENT,)
 
 
 class LavviebotClient:
