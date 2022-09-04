@@ -1,10 +1,7 @@
-"""Init file for Lavviebot API"""
-
 from lavviebot import constants
 from lavviebot import exceptions
 from lavviebot import lavviebot_client
 from lavviebot import model
-from lavviebot import test
 
 from lavviebot.constants import (ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE,
                                  APP_VERSION, BASE_URL, CAT_STATUS, CONNECTION,
@@ -15,7 +12,6 @@ from lavviebot.constants import (ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE,
 from lavviebot.exceptions import (LavviebotAuthError, LavviebotError,)
 from lavviebot.lavviebot_client import (LavviebotClient,)
 from lavviebot.model import (Cat, LavviebotData, LitterBox,)
-from lavviebot.test import (main, start_time,)
 
 __all__ = ['ACCEPT', 'ACCEPT_ENCODING', 'ACCEPT_LANGUAGE', 'APP_VERSION',
            'BASE_URL', 'CAT_STATUS', 'CONNECTION', 'CONTENT_TYPE',
@@ -23,5 +19,4 @@ __all__ = ['ACCEPT', 'ACCEPT_ENCODING', 'ACCEPT_LANGUAGE', 'APP_VERSION',
            'LB_CAT_LOG', 'LB_STATUS', 'LavviebotAuthError', 'LavviebotClient',
            'LavviebotData', 'LavviebotError', 'LitterBox', 'TIMEOUT',
            'TIME_ZONE', 'TOKEN_QUERY', 'UNKNOWN_STATUS', 'USER_AGENT',
-           'constants', 'exceptions', 'lavviebot_client', 'main', 'model',
-           'start_time', 'test']
+           'constants', 'exceptions', 'lavviebot_client', 'model']
