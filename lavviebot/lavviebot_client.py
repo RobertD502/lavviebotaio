@@ -1,9 +1,9 @@
 """Python API for Lavviebot S Litter Box"""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Tuple
 
-from datetime import datetime
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 import asyncio
@@ -17,7 +17,7 @@ from .model import Cat, LavviebotData, LitterBox
 from .constants import (ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE,
                         APP_VERSION, BASE_URL, CAT_STATUS, CONNECTION,
                         CONTENT_TYPE, COOKIE_QUERY, DISCOVER_CATS,
-                        DISCOVER_LB, LANGUAGE, LB_CAT_LOG, LB_STATUS,
+                        DISCOVER_LB, LANGUAGE, LB_CAT_LOG, LB_ERROR_LOG, LB_STATUS,
                         TIMEOUT, TIME_ZONE, TOKEN_QUERY, UNKNOWN_STATUS, USER_AGENT,)
 
 
@@ -234,6 +234,19 @@ class LavviebotClient:
             last_used: datetime = datetime.fromtimestamp(
                 int(state[1]['data']['getLavviebotPoopRecord']['catUsageHistory'][00].get('creationTime')) / 1000,
                 tz=ZoneInfo('Asia/Seoul')).astimezone()
+            # Get the oldest usage record for today in order to determine number of times litter box was used today
+            today_date: date = date.today()
+            today_usage_list: list = []
+            for usage_record in state[1]['data']['getLavviebotPoopRecord']['catUsageHistory']:
+                epoch_to_date = datetime.fromtimestamp(int(usage_record['creationTime']) / 1000).date()
+                if epoch_to_date == today_date:
+                    today_usage_list.append(usage_record)
+                else:
+                    break
+            times_used_today: int = len(today_usage_list)
+
+            # Litter box error log
+            error_log: list = state[2]['data']['getIotErrorLog']['errorLogs']
 
             litter_box_data[device_id] = LitterBox(
                 device_id=device_id,
@@ -256,6 +269,8 @@ class LavviebotClient:
                 last_cat_used_name=last_cat_used_name,
                 last_used_duration=last_used_duration,
                 last_used=last_used,
+                times_used_today=times_used_today,
+                error_log=error_log,
             )
 
         """ Get all cats """
@@ -327,7 +342,8 @@ class LavviebotClient:
         return LavviebotData(litterboxes=litter_box_data, cats=cat_data)
 
 
-    async def async_fetch_all_endpoints(self, device_id: int) -> tuple[Any, Any]:
+    async def async_fetch_all_endpoints(self, device_id: int) -> tuple[
+        BaseException | Any, BaseException | Any, BaseException | Any]:
         """
         Parallel request are made to all endpoints for each litter box.
         returns a list containing latest status, and cat usage log
@@ -335,7 +351,8 @@ class LavviebotClient:
 
         results = await asyncio.gather(*[
             self.async_get_litter_box_status(device_id),
-            self.async_get_litter_box_cat_log(device_id)
+            self.async_get_litter_box_cat_log(device_id),
+            self.async_get_litter_box_error_log(device_id),
         ],
                                        )
         return results
@@ -412,7 +429,43 @@ class LavviebotClient:
         else:
             return response
 
-    async def async_get_unknown_status(self, cat_id: int) -> ClientResponse:
+    async def async_get_litter_box_error_log(self, device_id: int) -> ClientResponse:
+        """ Get error log that is associated with the litter box """
+
+        if self.cookie is None or self.token is None:
+            await self.login()
+        headers = {
+            'Accept': ACCEPT,
+            'Cookie': self.cookie,
+            'Accept-Encoding': ACCEPT_ENCODING,
+            'Accept-Language': ACCEPT_LANGUAGE,
+            'Authorization': self.token,
+            'Connection': CONNECTION,
+            'Content-Type': CONTENT_TYPE,
+            'User-Agent': USER_AGENT
+        }
+        lbel_payload = {
+            "operationName": "GetIotErrorLog",
+            "variables": {
+                "data": {
+                    "iotId": device_id
+                }
+            },
+            "query": LB_ERROR_LOG
+        }
+        response = await self._post(headers, lbel_payload)
+        if 'errors' in response:
+            message = response['errors'][0]['message']
+            if message == "Please login again.":
+                await self.login()
+                return await self.async_get_litter_box_error_log(device_id)
+            else:
+                raise LavviebotError(message)
+        else:
+            return response
+
+    async def async_get_unknown_status(self, cat_id: int) -> tuple[
+        SimpleCookie | ClientResponse, SimpleCookie | ClientResponse, SimpleCookie | ClientResponse]:
         """ Get most recent status for Unknown cat if present """
 
         if self.cookie is None or self.token is None:
@@ -476,7 +529,8 @@ class LavviebotClient:
         else:
             return poop_response, duration_response, weight_response
 
-    async def async_get_cat_status(self, cat_id: int) -> ClientResponse:
+    async def async_get_cat_status(self, cat_id: int) -> tuple[
+        SimpleCookie | ClientResponse, SimpleCookie | ClientResponse, SimpleCookie | ClientResponse]:
         """ Get most recent status for single cat """
 
         if self.cookie is None or self.token is None:
