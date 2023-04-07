@@ -37,6 +37,8 @@ class LitterBox:
     last_cat_used_name: str
     last_used_duration: int
     last_used: datetime
+    times_used_today: int
+    error_log: list
 
 @dataclass
 class Cat:
