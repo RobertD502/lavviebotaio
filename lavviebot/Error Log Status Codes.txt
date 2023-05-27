@@ -1,0 +1,7 @@
+  errors: {
+    101: "Auto-cleaning stopped. Please check if anything is blocking inside the litter tray.",
+    105: "Main motor overload occurred",
+    106: "Main motor or adapter error",
+    108: "Main motor overload occurred",
+    109: "Litter auto-refill stopped",
+  }

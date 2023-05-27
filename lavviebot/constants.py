@@ -63,4 +63,6 @@ CAT_STATUS = "query GetPoopData($data: GetPoopGraphDataArgs!) " \
              "{getPoopData(data: $data) {...GraphData __typename}} fragment GraphData on PoopGraphDataResponse" \
              "{timezone graphType period today avg30days avgTerm graphData __typename}"
 
-
+""" Query to get the error log for a litter boc """
+LB_ERROR_LOG = "query GetIotErrorLog($data: GetIotErrorLogArgs!) " \
+               "{getIotErrorLog(data: $data) {errorLogs {id status creationTime __typename} cursor hasMore __typename}}"
