@@ -288,9 +288,9 @@ class LavviebotClient:
                     }
                     cats.append(unknown_cat)
                 """ Also append the default cat. """
-                selected_cat = response['data']['purrsongPetMain']['selectedPet']
-                selected_cat['is_unknown'] = False
-                cats.append(selected_cat)
+                if selected_cat := response['data']['purrsongPetMain']['selectedPet']:
+                    selected_cat['is_unknown'] = False
+                    cats.append(selected_cat)
 
                 for other_cat in response['data']['purrsongPetMain']['otherPets']:
                     other_cat['is_unknown'] = False
@@ -318,18 +318,27 @@ class LavviebotClient:
                 else:
                     cat_name: str = cat['cat'].get('nickname')
                     poop_data, duration_data, weight_data = await self.async_get_cat_status(cat_id)
-                    if weight_data['data']['getPoopData']['today'] is None:
+                    if weight_data['data']['getPoopData']:
+                        if weight_data['data']['getPoopData']['today'] is None:
+                            cat_weight_pnds: float = 0.0
+                        else:
+                            cat_weight_pnds: float = weight_data['data']['getPoopData']['today'] / 455.1
+                    else:
                         cat_weight_pnds: float = 0.0
+                    if duration_data['data']['getPoopData']:
+                        if duration_data['data']['getPoopData']['today'] is None:
+                            duration: float = 0.0
+                        else:
+                            duration: float = duration_data['data']['getPoopData']['today']
                     else:
-                        cat_weight_pnds: float = weight_data['data']['getPoopData']['today'] / 455.1
-                    if duration_data['data']['getPoopData']['today'] is None:
                         duration: float = 0.0
+                    if poop_data['data']['getPoopData']:
+                        if poop_data['data']['getPoopData']['today'] is None:
+                            poop_count: int = 0
+                        else:
+                            poop_count: int = poop_data['data']['getPoopData']['today']
                     else:
-                        duration: float = duration_data['data']['getPoopData']['today']
-                    if poop_data['data']['getPoopData']['today'] is None:
                         poop_count: int = 0
-                    else:
-                        poop_count: int = poop_data['data']['getPoopData']['today']
 
                 cat_data[cat_id] = Cat(
                     cat_id=cat_id,
