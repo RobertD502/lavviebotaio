@@ -25,21 +25,47 @@ TOKEN_QUERY = "mutation Login($data: LoginArgs!) {login(data: $data) {userId use
 DISCOVER_LB = '''query PurrsongTabLocations {getLocations {...LocationInfo getIots
                  {id lavviebot {nickname __typename} lavvieTag {id nickname __typename}
                  lavvieScanner {nickname __typename} pet {id cat {catMainPhoto nickname __typename} __typename} __typename} __typename}}
-                 fragment LocationInfo on Location {id nickname locationRole __typename}'''
+                 fragment LocationInfo on Location {id nickname locationRole hasUnknownCat __typename}'''
 
 """ Query to discover cats """
-DISCOVER_CATS = "query PetMain($data: PurrsongPetMainArgs!) " \
-                "{purrsongPetMain(data: $data) {location" \
-                "{id nickname hasUnknownCat hasLavviebot hasLavvieBox locationRole otherLocations" \
-                "{...LocationInfo __typename} __typename} selectedPet {...SelectedPet hasLavvieTag petClips" \
-                "{isDetectedOutlier __typename} __typename } otherPets {...OtherPetsForPetMain __typename } conditionScore dailyTotal" \
-                "{poopCount rest grooming walk run woodadaCount __typename} hourlyData" \
-                "{poopCount rest grooming walk run woodadaCount mainData __typename} __typename}} fragment LocationInfo on Location" \
-                "{id nickname locationRole __typename} fragment SelectedPet on Pet {id petType petCode cat" \
-                "{id nickname catSex catMainPhoto catAge catBirthDate catBirthDateCertainty __typename} dog" \
-                "{id nickname dogSex dogMainPhoto dogAge __typename} __typename} fragment OtherPetsForPetMain on Pet" \
-                "{id petType hasLavvieTag cat {id nickname catSex catMainPhoto catAge __typename} dog" \
-                "{id nickname dogSex dogMainPhoto __typename} petClips {isDetectedOutlier __typename} __typename}"
+
+DISCOVER_CATS = """
+query CatMain($locationId: Int, $includeLavvieCare: Boolean = true, $includeLavvieTag: Boolean = true, $includeDetailCatInfo: Boolean = true, $includeLocation: Boolean = true) {
+  getPets(data: {locationId: $locationId}) {
+    ...PetList
+    __typename
+  }
+}
+fragment PetList on Pet {
+  id
+  petCode
+  lavvieTag @include(if: $includeLavvieTag) {
+    id
+    lavvieTagUid
+    iotId
+    __typename
+  }
+  cat {
+    id
+    nickname
+    catMainPhoto
+    lavvieCare @include(if: $includeLavvieCare) {
+      recentStartDate
+      status
+      __typename
+    }
+    catAge @include(if: $includeDetailCatInfo)
+    catSex @include(if: $includeDetailCatInfo)
+    catLifeStage @include(if: $includeDetailCatInfo)
+    catBirthDate @include(if: $includeDetailCatInfo)
+    catBirthDateCertainty @include(if: $includeDetailCatInfo)
+    __typename
+  }
+  locationId @include(if: $includeLocation)
+  __typename
+}
+"""
+
 
 """ Query to get status of specific litter box """
 LB_STATUS = "query GetLavviebotDetails($data: IotIdArgs!) {getIotDetail(data: $data) " \
