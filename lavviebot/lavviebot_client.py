@@ -127,11 +127,13 @@ class LavviebotClient:
             'User-Agent': USER_AGENT
         }
         dc_payload = {
-            "operationName": "PetMain",
+            "operationName": "CatMain",
             "variables": {
-                "data": {
-                    "locationId": location_id
-                }
+                "includeLavvieCare": True,
+                "includeLavvieTag": True,
+                "includeDetailCatInfo": True,
+                "includeLocation": True,
+                "locationId": location_id
             },
             "query": DISCOVER_CATS
         }
@@ -280,21 +282,16 @@ class LavviebotClient:
         if self.has_cat:
             for location in locations:
                 response = await self.async_discover_cats(location['id'])
-                location_data = response['data']['purrsongPetMain']['location']
-                if location_data['hasUnknownCat']:
+                if location['hasUnknownCat']:
                     unknown_cat = {
-                        'id': location_data['id'],
+                        'id': location['id'],
                         'is_unknown': True
                     }
                     cats.append(unknown_cat)
-                """ Also append the default cat. """
-                if selected_cat := response['data']['purrsongPetMain']['selectedPet']:
-                    selected_cat['is_unknown'] = False
-                    cats.append(selected_cat)
-
-                for other_cat in response['data']['purrsongPetMain']['otherPets']:
-                    other_cat['is_unknown'] = False
-                    cats.append(other_cat)
+                """ Append all cats to cat list. """
+                for cat in response['data']['getPets']:
+                    cat["is_unknown"] = False
+                    cats.append(cat)
 
             cat: dict
             for cat in cats:
@@ -349,6 +346,7 @@ class LavviebotClient:
                 )
 
         return LavviebotData(litterboxes=litter_box_data, cats=cat_data)
+
 
 
     async def async_fetch_all_endpoints(self, device_id: int) -> tuple[
@@ -628,3 +626,4 @@ class LavviebotClient:
         except Exception as e:
             raise LavviebotError(f'Could not return json: {e}') from e
         return response
+
