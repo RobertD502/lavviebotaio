@@ -20,6 +20,7 @@ from .constants import (ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE,
                         DISCOVER_LB, LANGUAGE, LB_CAT_LOG, LB_ERROR_LOG, LB_STATUS,
                         TIMEOUT, TIME_ZONE, TOKEN_QUERY, UNKNOWN_STATUS, USER_AGENT,)
 
+LOGGER = logging.getLogger(__name__)
 
 class LavviebotClient:
     """Lavviebot Client"""
@@ -656,6 +657,8 @@ class LavviebotClient:
 
         # 500 response means current token has been rate-limited
         if resp.status == 500:
+          body = await resp.json()
+          LOGGER.error(f'Lavviebot 500 response body: {body}')
           return resp
         if resp.status != 200:
             raise LavviebotError(f'Lavviebot API error: {resp}')
