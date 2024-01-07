@@ -16,3 +16,10 @@ class LavviebotAuthError(Exception):
     def __init__(self, *args: Any) -> None:
         """Initialize the exception."""
         Exception.__init__(self, *args)
+
+class LavviebotRateLimit(Exception):
+    """ Exception to raise when access to API has been rate limited """
+
+    def __init__(self, *args: Any) -> None:
+        """Initialize the exception."""
+        Exception.__init__(self, *args)
