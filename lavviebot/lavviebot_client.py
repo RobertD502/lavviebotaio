@@ -140,16 +140,11 @@ class LavviebotClient:
             "query": DISCOVER_CATS
         }
         response = await self._post(headers, dc_payload)
-        ## ClientResponse type is only returned if we encounter a 500 status code.
-        ## 500 status indicates we have been rate-limited and need to log in again.
-        if isinstance(response, ClientResponse):
-            await self.login()
-            return await self.async_discover_cats(location_id)
-        elif 'errors' in response:
+        if 'errors' in response:
             message = response['errors'][0]['message']
-            if message == "Please login again.":
+            if message in ["Please login again.", "Too many requests, please try again in a few minutes."]:
                 await self.login()
-                return await self.async_discover_cats(location_id)
+                await self.async_discover_cats(location_id)
             else:
                 raise LavviebotError(message)
         else:
@@ -177,16 +172,11 @@ class LavviebotClient:
             "query": DISCOVER_LB
         }
         response = await self._post(headers, dlb_payload)
-        ## ClientResponse type is only returned if we encounter a 500 status code.
-        ## 500 status indicates we have been rate-limited and need to log in again.
-        if isinstance(response, ClientResponse):
-            await self.login()
-            return await self.async_discover_litter_boxes()
-        elif 'errors' in response:
+        if 'errors' in response:
             message = response['errors'][0]['message']
-            if message == "Please login again.":
+            if message in ["Please login again.", "Too many requests, please try again in a few minutes."]:
                 await self.login()
-                return await self.async_discover_litter_boxes()
+                await self.async_discover_litter_boxes()
             else:
                 raise LavviebotError(message)
         else:
@@ -402,16 +392,11 @@ class LavviebotClient:
             "query": LB_STATUS
         }
         response = await self._post(headers, lbs_payload)
-        ## ClientResponse type is only returned if we encounter a 500 status code.
-        ## 500 status indicates we have been rate-limited and need to log in again.
-        if isinstance(response, ClientResponse):
-            await self.login()
-            return await self.async_get_litter_box_status(device_id)
-        elif 'errors' in response:
+        if 'errors' in response:
             message = response['errors'][0]['message']
-            if message == "Please login again.":
+            if message in ["Please login again.", "Too many requests, please try again in a few minutes."]:
                 await self.login()
-                return await self.async_get_litter_box_status(device_id)
+                await self.async_get_litter_box_status(device_id)
             else:
                 raise LavviebotError(message)
         else:
@@ -443,16 +428,11 @@ class LavviebotClient:
             "query": LB_CAT_LOG
         }
         response = await self._post(headers, lbcl_payload)
-        ## ClientResponse type is only returned if we encounter a 500 status code.
-        ## 500 status indicates we have been rate-limited and need to log in again.
-        if isinstance(response, ClientResponse):
-            await self.login()
-            return await self.async_get_litter_box_cat_log(device_id)
-        elif 'errors' in response:
+        if 'errors' in response:
             message = response['errors'][0]['message']
-            if message == "Please login again.":
+            if message in ["Please login again.", "Too many requests, please try again in a few minutes."]:
                 await self.login()
-                return await self.async_get_litter_box_cat_log(device_id)
+                await self.async_get_litter_box_cat_log(device_id)
             else:
                 raise LavviebotError(message)
         else:
@@ -483,16 +463,11 @@ class LavviebotClient:
             "query": LB_ERROR_LOG
         }
         response = await self._post(headers, lbel_payload)
-        ## ClientResponse type is only returned if we encounter a 500 status code.
-        ## 500 status indicates we have been rate-limited and need to log in again.
-        if isinstance(response, ClientResponse):
-            await self.login()
-            return await self.async_get_litter_box_error_log(device_id)
-        elif 'errors' in response:
+        if 'errors' in response:
             message = response['errors'][0]['message']
-            if message == "Please login again.":
+            if message in ["Please login again.", "Too many requests, please try again in a few minutes."]:
                 await self.login()
-                return await self.async_get_litter_box_error_log(device_id)
+                await self.async_get_litter_box_error_log(device_id)
             else:
                 raise LavviebotError(message)
         else:
@@ -553,18 +528,11 @@ class LavviebotClient:
         poop_response = await self._post(headers, poop_payload)
         duration_response = await self._post(headers, duration_payload)
         weight_response = await self._post(headers, weight_payload)
-        ## ClientResponse type is only returned if we encounter a 500 status code.
-        ## 500 status indicates we have been rate-limited and need to log in again.
-        response_list = [poop_response, duration_response, weight_response]
-        for resp in response_list:
-            if isinstance(resp, ClientResponse):
-                await self.login()
-                return await self.async_get_unknown_status(cat_id)
         if 'errors' in (response := poop_response, duration_response, weight_response):
             message = response['errors'][0]['message']
-            if message == "Please login again.":
+            if message in ["Please login again.", "Too many requests, please try again in a few minutes."]:
                 await self.login()
-                return await self.async_get_unknown_status(cat_id)
+                await self.async_get_unknown_status(cat_id)
             else:
                 raise LavviebotError(message)
         else:
@@ -625,18 +593,11 @@ class LavviebotClient:
         poop_response = await self._post(headers, poop_payload)
         duration_response = await self._post(headers, duration_payload)
         weight_response = await self._post(headers, weight_payload)
-        ## ClientResponse type is only returned if we encounter a 500 status code.
-        ## 500 status indicates we have been rate-limited and need to log in again.
-        response_list = [poop_response, duration_response, weight_response]
-        for resp in response_list:
-            if isinstance(resp, ClientResponse):
-                await self.login()
-                return await self.async_get_cat_status(cat_id)
         if 'errors' in (response := poop_response, duration_response, weight_response):
             message = response['errors'][0]['message']
-            if message == "Please login again.":
+            if message in ["Please login again.", "Too many requests, please try again in a few minutes."]:
                 await self.login()
-                return await self.async_get_cat_status(cat_id)
+                await self.async_get_cat_status(cat_id)
             else:
                 raise LavviebotError(message)
         else:
@@ -656,12 +617,10 @@ class LavviebotClient:
     async def _response(resp: ClientResponse, is_cookie: bool) -> SimpleCookie | ClientResponse:
         """ Check response for any errors & return original response if none """
 
-        # 500 response means current token has been rate-limited
+        # 500 status returned when current token has been rate-limited
         if resp.status == 500:
-          body = await resp.json()
-          LOGGER.error(f'Lavviebot 500 response body: {body}')
-          return resp
-        if resp.status != 200:
+            LOGGER.error(await resp.json())
+        if resp.status != 200 and resp.status != 500:
             raise LavviebotError(f'Lavviebot API error: {resp}')
 
         try:
