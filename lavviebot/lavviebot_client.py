@@ -21,7 +21,7 @@ from .constants import (ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE,
                         DISCOVER_LB, LANGUAGE, LB_CAT_LOG, LB_ERROR_LOG, LB_STATUS,
                         TIMEOUT, TIME_ZONE, TOKEN_QUERY, UNKNOWN_STATUS, USER_AGENT,)
 
-LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger("lavviebotaio")
 
 class LavviebotClient:
     """Lavviebot Client"""
