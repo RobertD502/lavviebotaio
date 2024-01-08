@@ -144,7 +144,7 @@ class LavviebotClient:
             message = response['errors'][0]['message']
             if message == "Please login again.":
                 await self.login()
-                await self.async_discover_cats(location_id)
+                return await self.async_discover_cats(location_id)
             else:
                 raise LavviebotError(message)
         else:
@@ -176,7 +176,7 @@ class LavviebotClient:
             message = response['errors'][0]['message']
             if message == "Please login again.":
                 await self.login()
-                await self.async_discover_litter_boxes()
+                return await self.async_discover_litter_boxes()
             else:
                 raise LavviebotError(message)
         else:
@@ -347,9 +347,9 @@ class LavviebotClient:
                     poop_count=poop_count,
                 )
 
-        return LavviebotData(litterboxes=litter_box_data, cats=cat_data)
-
-
+        purrsong_data = LavviebotData(litterboxes=litter_box_data, cats=cat_data)
+        LOGGER.debug(f'Purrsong API data returned: {purrsong_data}')
+        return purrsong_data
 
     async def async_fetch_all_endpoints(self, device_id: int) -> tuple[
         BaseException | Any, BaseException | Any, BaseException | Any]:
@@ -365,7 +365,6 @@ class LavviebotClient:
         ],
                                        )
         return results
-
 
     async def async_get_litter_box_status(self, device_id: int) -> ClientResponse:
         """ Get most recent status available for litter box """
@@ -396,12 +395,11 @@ class LavviebotClient:
             message = response['errors'][0]['message']
             if message == "Please login again.":
                 await self.login()
-                await self.async_get_litter_box_status(device_id)
+                return await self.async_get_litter_box_status(device_id)
             else:
                 raise LavviebotError(message)
         else:
             return response
-
 
     async def async_get_litter_box_cat_log(self, device_id: int) -> ClientResponse:
         """ Get usage log that is associated with the litter box """
@@ -432,7 +430,7 @@ class LavviebotClient:
             message = response['errors'][0]['message']
             if message == "Please login again.":
                 await self.login()
-                await self.async_get_litter_box_cat_log(device_id)
+                return await self.async_get_litter_box_cat_log(device_id)
             else:
                 raise LavviebotError(message)
         else:
@@ -467,7 +465,7 @@ class LavviebotClient:
             message = response['errors'][0]['message']
             if message == "Please login again.":
                 await self.login()
-                await self.async_get_litter_box_error_log(device_id)
+                return await self.async_get_litter_box_error_log(device_id)
             else:
                 raise LavviebotError(message)
         else:
@@ -532,7 +530,7 @@ class LavviebotClient:
             message = response['errors'][0]['message']
             if message == "Please login again.":
                 await self.login()
-                await self.async_get_unknown_status(cat_id)
+                return await self.async_get_unknown_status(cat_id)
             else:
                 raise LavviebotError(message)
         else:
@@ -597,7 +595,7 @@ class LavviebotClient:
             message = response['errors'][0]['message']
             if message == "Please login again.":
                 await self.login()
-                await self.async_get_cat_status(cat_id)
+                return await self.async_get_cat_status(cat_id)
             else:
                 raise LavviebotError(message)
         else:
@@ -618,15 +616,13 @@ class LavviebotClient:
         """ Check response for any errors & return original response if none """
 
         # 500 status returned when current token has been rate-limited
-        if resp.status == 500:
-            LOGGER.error(await resp.json())
         if resp.status != 200:
             response_message = await resp.json()
             if 'errors' in response_message:
                 error_message = response_message['errors'][0]['message']
                 if error_message == "Too many requests, please try again in a few minutes.":
                     raise LavviebotRateLimit(
-                        'You have been rate limited by the Purrsong API. Decrease the polling frequency or use a new ClientSession.'
+                        'You have been rate limited by the Purrsong API. Decrease the polling frequency or create a new ClientSession.'
                     )
                 else:
                     raise LavviebotError(f'Lavviebot API error: {response_message}')
