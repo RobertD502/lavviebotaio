@@ -7,12 +7,13 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 import asyncio
+import logging
 
 from http.cookies import SimpleCookie
 
 from aiohttp import ClientResponse, ClientSession
 
-from .exceptions import LavviebotAuthError, LavviebotError
+from .exceptions import LavviebotAuthError, LavviebotError, LavviebotRateLimit
 from .model import Cat, LavviebotData, LitterBox
 from .constants import (ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE,
                         APP_VERSION, BASE_URL, CAT_STATUS, CONNECTION,
@@ -20,6 +21,7 @@ from .constants import (ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE,
                         DISCOVER_LB, LANGUAGE, LB_CAT_LOG, LB_ERROR_LOG, LB_STATUS,
                         TIMEOUT, TIME_ZONE, TOKEN_QUERY, UNKNOWN_STATUS, USER_AGENT,)
 
+LOGGER = logging.getLogger("lavviebotaio")
 
 class LavviebotClient:
     """Lavviebot Client"""
@@ -345,9 +347,9 @@ class LavviebotClient:
                     poop_count=poop_count,
                 )
 
-        return LavviebotData(litterboxes=litter_box_data, cats=cat_data)
-
-
+        purrsong_data = LavviebotData(litterboxes=litter_box_data, cats=cat_data)
+        LOGGER.debug(f'Purrsong API data returned: {purrsong_data}')
+        return purrsong_data
 
     async def async_fetch_all_endpoints(self, device_id: int) -> tuple[
         BaseException | Any, BaseException | Any, BaseException | Any]:
@@ -363,7 +365,6 @@ class LavviebotClient:
         ],
                                        )
         return results
-
 
     async def async_get_litter_box_status(self, device_id: int) -> ClientResponse:
         """ Get most recent status available for litter box """
@@ -399,7 +400,6 @@ class LavviebotClient:
                 raise LavviebotError(message)
         else:
             return response
-
 
     async def async_get_litter_box_cat_log(self, device_id: int) -> ClientResponse:
         """ Get usage log that is associated with the litter box """
@@ -615,8 +615,19 @@ class LavviebotClient:
     async def _response(resp: ClientResponse, is_cookie: bool) -> SimpleCookie | ClientResponse:
         """ Check response for any errors & return original response if none """
 
+        # 500 status returned when current token has been rate-limited
         if resp.status != 200:
-            raise LavviebotError(f'Lavviebot API error: {resp}')
+            response_message = await resp.json()
+            if 'errors' in response_message:
+                error_message = response_message['errors'][0]['message']
+                if error_message == "Too many requests, please try again in a few minutes.":
+                    raise LavviebotRateLimit(
+                        'You have been rate limited by the Purrsong API. Decrease the polling frequency or create a new ClientSession.'
+                    )
+                else:
+                    raise LavviebotError(f'Lavviebot API error: {response_message}')
+            else:
+                raise LavviebotError(f'Lavviebot API error: {response_message}')
 
         try:
             if is_cookie:
