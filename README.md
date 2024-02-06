@@ -1,7 +1,7 @@
 # Lavviebotaio
-Asynchronous Python library for the PurrSong API utilized by LavvieBot S litter boxes.
+Asynchronous Python library for the PurrSong API utilized by LavvieBot S litter boxes, LavvieScanners, and LavvieTags.
 
-This package provides an API client for the [PurrSong](https://purrsong.com/en/) API allowing you to fetch the status of Lavviebot S litter boxes and cats associated with a PurrSong account.
+This package provides an API client for the [PurrSong](https://purrsong.com/en/) API allowing you to fetch the status of Lavviebot S litter boxes, LavvieScanners, LavvieTags, and cats associated with a PurrSong account.
 
 
 **The API is not published by PurrSong, so it may break without notice.**
