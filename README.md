@@ -28,14 +28,14 @@ async def main():
         # Create a client using PurrSong account email and password
         client = LavviebotClient("email", "password", session)
 
-        # Discover all litter boxes associated with account
-        litter_boxes = await client.async_discover_litter_boxes()
+        # Discover all devices associated with PurrSong account
+        devices = await client.async_discover_devices()
         
         # Discover all cats associated with account. Requires `location id` as an `int`.
         cats = await client.async_discover_cats(123)
         
-        # Get info pertaining to a particular litter box using device_id integer
-        litter_box_status = await client.async_get_litter_box_status(device_id)
+        # Get info pertaining to a particular litter box (state, usage, error log) using device_id integer
+        litter_box_status = await self.async_get_litter_box_status(device_id)
         
         # Get litter box usage log pertaining to a particular litter box using device_id integer
         litter_box_log = await client.async_get_litter_box_cat_log(device_id)
@@ -45,8 +45,14 @@ async def main():
         
         # Get weights, durations, and usage counts for a particular cat using cat_id integer
         cat_status = await client.async_get_cat_status(cat_id)
+
+        # Get info about a particular LavvieScanner using device_id and device_type of "lavvie_scanner")
+        lavvie_scanner = await client.async_get_iot_device_status(device_id, "lavvie_scanner")
+
+        # Get info about a particular LavvieTag using device_id and device_type of "lavvie_tag")
+        lavvie_tag = await client.async_get_iot_device_status(device_id, "lavvie_tag")
         
-        # Get all associated litter boxes and cats and store in a LavviebotData object
+        # Get all associated litter boxes, scanners, tags, and cats and store in a LavviebotData object
         get_all = await client.async_get_data()
 
 
