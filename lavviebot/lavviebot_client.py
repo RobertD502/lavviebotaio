@@ -13,9 +13,9 @@ from http.cookies import SimpleCookie
 
 from aiohttp import ClientResponse, ClientSession
 
-from lavviebot.exceptions import LavviebotAuthError, LavviebotError, LavviebotRateLimit
-from lavviebot.model import Cat, LavviebotData, LavvieScanner, LavvieTag, LitterBox
-from lavviebot.constants import (ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE,
+from .exceptions import LavviebotAuthError, LavviebotError, LavviebotRateLimit
+from .model import Cat, LavviebotData, LavvieScanner, LavvieTag, LitterBox
+from .constants import (ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE,
                         APP_VERSION, BASE_URL, CAT_STATUS, CONNECTION,
                         CONTENT_TYPE, COOKIE_QUERY, DISCOVER_CATS,
                         DISCOVER_DEVICES, LANGUAGE, LAVVIE_SCANNER_STATUS,
