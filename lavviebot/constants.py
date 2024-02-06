@@ -22,7 +22,7 @@ COOKIE_QUERY = "query CheckServerStatus($data: CheckServerStatusArgs!) {checkSer
 TOKEN_QUERY = "mutation Login($data: LoginArgs!) {login(data: $data) {userId userToken hasCat __typename}}"
 
 """ Query to discover litter boxes"""
-DISCOVER_LB = '''query PurrsongTabLocations {getLocations {...LocationInfo getIots
+DISCOVER_DEVICES = '''query PurrsongTabLocations {getLocations {...LocationInfo getIots
                  {id lavviebot {nickname __typename} lavvieTag {id nickname __typename}
                  lavvieScanner {nickname __typename} pet {id cat {catMainPhoto nickname __typename} __typename} __typename} __typename}}
                  fragment LocationInfo on Location {id nickname locationRole hasUnknownCat __typename}'''
@@ -79,16 +79,240 @@ LB_CAT_LOG = "query GetLavviebotPoopRecord($data: GetIotCatRecordArgs!) {getLavv
              "{mostUsedCat {count catMainPhoto nickname __typename} catUsageHistory " \
              "{petId nickname catMainPhoto duration creationTime __typename} nextCursor __typename}}"
 
+""" Query to get the error log for a litter boc """
+LB_ERROR_LOG = "query GetIotErrorLog($data: GetIotErrorLogArgs!) { getIotErrorLog(data: $data) { errorLogs { id status creationTime __typename } cursor hasMore __typename }}"
+
 """ Query to get the most recent status for Unknown cat if one is present on the account"""
-UNKNOWN_STATUS = "query GetUnknownPoopData($data: GetUnknownPoopDataArgs!) " \
-                 "{getUnknownPoopData(data: $data) {...GraphData __typename}} fragment GraphData on PoopGraphDataResponse" \
-                 "{timezone graphType period today avg30days avgTerm graphData __typename}"
+
+UNKNOWN_STATUS = """
+query GetUnknownPoopData($locationId: Int!, $days: String!, $weight: String!, $poopCount: String!, $poopDuration: String!) {
+  weightData: getUnknownPoopData(data: {locationId: $locationId, graphType: $weight, period: $days}) {
+    timezone
+    graphType
+    period
+    today
+    avg30days
+    avgTerm
+    graphData
+    __typename
+  }
+  poopCount: getUnknownPoopData(data: {locationId: $locationId, graphType: $poopCount, period: $days}) {
+    timezone
+    graphType
+    period
+    today
+    avg30days
+    avgTerm
+    graphData
+    __typename
+  }
+  poopDuration: getUnknownPoopData(data: {locationId: $locationId, graphType: $poopDuration, period: $days}) {
+    timezone
+    graphType
+    period
+    today
+    avg30days
+    avgTerm
+    graphData
+    __typename
+  }
+}
+"""
 
 """ Query to get most recent status for individual cat """
-CAT_STATUS = "query GetPoopData($data: GetPoopGraphDataArgs!) " \
-             "{getPoopData(data: $data) {...GraphData __typename}} fragment GraphData on PoopGraphDataResponse" \
-             "{timezone graphType period today avg30days avgTerm graphData __typename}"
 
-""" Query to get the error log for a litter boc """
-LB_ERROR_LOG = "query GetIotErrorLog($data: GetIotErrorLogArgs!) " \
-               "{getIotErrorLog(data: $data) {errorLogs {id status creationTime __typename} cursor hasMore __typename}}"
+CAT_STATUS = """
+query GetCatHealthInfo($locationId: Int!, $petId: Int!, $days: String!, $weight: String!, $poopCount: String!, $poopDuration: String!, $date: String) {
+  getPetContents(data: {petId: $petId}) {
+    petId
+    calorieAnalysis {
+      todayRecommendCalorieUntilSyncTime
+      todayCalorieUntilSyncTime {
+        value
+        status
+        __typename
+      }
+      todayLastSyncHour
+      recommendPlayTime
+      yesterdayRecommendCalorie
+      yesterdayCalorie {
+        value
+        status
+        __typename
+      }
+      __typename
+    }
+    bcs {
+      inputCatWeight
+      inputBcs
+      beforeCatWeight
+      beforeBcs
+      afterCatWeight
+      afterBcs
+      afterBcsLogCreationTime
+      canUpdate
+      hasNewUserInput
+      plannerSubCategories
+      __typename
+    }
+    biologicalAge {
+      catAge
+      expectedWaitingTime
+      biologicalAgeStatus
+      biologicalAge
+      recentBioLogicalAgeDate
+      __typename
+    }
+    activityRank {
+      expectedWaitingTime
+      recentActivityRankWeek
+      activityRank
+      canUpdate
+      __typename
+    }
+    __typename
+  }
+  getPetMainBowelData(data: {locationId: $locationId, petId: $petId}) {
+    id
+    bowelData {
+      graphType
+      difference
+      value
+      __typename
+    }
+    __typename
+  }
+  getPetMainActivityData(data: {petId: $petId}) {
+    id
+    recentLavvieTagSyncTime
+    sleeping {
+      id
+      value
+      difference
+      __typename
+    }
+    activity {
+      id
+      value
+      difference
+      __typename
+    }
+    activityScore {
+      id
+      value
+      difference
+      __typename
+    }
+    resting
+    walking
+    running
+    zoomies
+    __typename
+  }
+  getYesterdayActivityScoreData(data: {petId: $petId}) {
+    data
+    __typename
+  }
+  weightData: getPoopData(data: {petId: $petId, graphType: $weight, period: $days}) {
+    timezone
+    graphType
+    period
+    today
+    avg30days
+    avgTerm
+    graphData
+    __typename
+  }
+  poopCount: getPoopData(data: {petId: $petId, graphType: $poopCount, period: $days}) {
+    timezone
+    graphType
+    period
+    today
+    avg30days
+    avgTerm
+    graphData
+    __typename
+  }
+  poopDuration: getPoopData(data: {petId: $petId, graphType: $poopDuration, period: $days}) {
+    timezone
+    graphType
+    period
+    today
+    avg30days
+    avgTerm
+    graphData
+    __typename
+  }
+  todayActivity: getCatHourlyData(data: {petId: $petId, date: $date}) {
+    rest
+    grooming
+    walk
+    run
+    woodadaCount
+    charging
+    mainData
+    id
+    __typename
+  }
+}
+"""
+
+""" Query to get most recent status for individual LavvieScanner """
+
+LAVVIE_SCANNER_STATUS = """
+query GetLavvieScannerDetails($data: IotIdArgs!) {
+  getIotDetail(data: $data) {
+    id
+    iotCodeTail
+    latestFirmwareVersion
+    lavvieScanner {
+      id
+      nickname
+      wifiStatus
+      routerSSID
+      recentLavvieScannerLog {
+        currentFirmwareVersion
+        creationTime
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
+"""
+
+""" Query to get most recent status for individual LavvieTag """
+
+LAVVIE_TAG_STATUS = """
+query GetLavvieTagDetails($data: IotIdArgs!) {
+  getIotDetail(data: $data) {
+    id
+    iotCodeTail
+    latestFirmwareVersion
+    pet {
+      id
+      cat {
+        nickname
+        catMainPhoto
+        __typename
+      }
+      __typename
+    }
+    lavvieTag {
+      nickname
+      currentFirmwareVersion
+      battery
+      lavvieTagUid
+      recentConnectionTime
+      convulsionPushNoti
+      recentLavvieTagLog {
+        id
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
+"""
