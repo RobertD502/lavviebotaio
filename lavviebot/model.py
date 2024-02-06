@@ -11,7 +11,10 @@ class LavviebotData:
     """ Dataclass for Lavviebot data. """
 
     litterboxes: dict[int, LitterBox]
+    lavvie_scanners: dict[int, LavvieScanner]
+    lavvie_tags: dict[int, LavvieTag]
     cats: dict[int, Cat]
+
 
 @dataclass
 class LitterBox:
@@ -40,13 +43,48 @@ class LitterBox:
     times_used_today: int
     error_log: list
 
+
+@dataclass
+class LavvieScanner:
+    """ Dataclass for LavvieScanner. """
+
+    device_id: int
+    device_name: str
+    iot_code_tail: str
+    latest_firmware: str
+    router_ssid: str
+    wifi_status: bool
+    current_firmware: str
+    last_seen: datetime
+
+
+@dataclass
+class LavvieTag:
+    """ Dataclass for LavvieTag. """
+
+    device_id: int
+    device_name: str
+    iot_code_tail: str
+    latest_firmware: str
+    current_firmware: str
+    battery: int
+    last_seen: datetime
+
+
 @dataclass
 class Cat:
     """ Dataclass for Lavviebot cat. """
 
     cat_id: int
+    location_id: int
     cat_name: str
+    has_lavvietag: bool
     cat_weight_pnds: float
     duration: float
     poop_count: int
+    zoomies: int  # expressed as a count
+    running: int  # expressed in seconds
+    walking: int  # expressed in seconds
+    resting: int  # expressed in seconds
+    sleeping: int # expressed in seconds
 
