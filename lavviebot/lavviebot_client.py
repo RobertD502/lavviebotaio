@@ -13,12 +13,13 @@ from http.cookies import SimpleCookie
 
 from aiohttp import ClientResponse, ClientSession
 
-from .exceptions import LavviebotAuthError, LavviebotError, LavviebotRateLimit
-from .model import Cat, LavviebotData, LitterBox
-from .constants import (ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE,
+from lavviebot.exceptions import LavviebotAuthError, LavviebotError, LavviebotRateLimit
+from lavviebot.model import Cat, LavviebotData, LavvieScanner, LavvieTag, LitterBox
+from lavviebot.constants import (ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE,
                         APP_VERSION, BASE_URL, CAT_STATUS, CONNECTION,
                         CONTENT_TYPE, COOKIE_QUERY, DISCOVER_CATS,
-                        DISCOVER_LB, LANGUAGE, LB_CAT_LOG, LB_ERROR_LOG, LB_STATUS,
+                        DISCOVER_DEVICES, LANGUAGE, LAVVIE_SCANNER_STATUS,
+                        LAVVIE_TAG_STATUS, LB_CAT_LOG, LB_ERROR_LOG, LB_STATUS,
                         TIMEOUT, TIME_ZONE, TOKEN_QUERY, UNKNOWN_STATUS, USER_AGENT,)
 
 LOGGER = logging.getLogger("lavviebotaio")
@@ -50,9 +51,9 @@ class LavviebotClient:
 
         self.cookie = await self.get_cookie()
         self.token, self.has_cat, self.user_id = await self.get_token()
-        return self.user_id
+        return None
 
-    async def get_cookie(self) -> ClientResponse:
+    async def get_cookie(self) -> SimpleCookie:
         """ Get cookie by checking PurrSong server status """
 
         headers = {
@@ -77,7 +78,7 @@ class LavviebotClient:
         response = await self._post(headers, cookie_payload, is_cookie=True)
         return response
 
-    async def get_token(self):
+    async def get_token(self) -> Tuple:
         """ Use email/password to obtain token """
 
         if self.cookie is None:
@@ -113,7 +114,7 @@ class LavviebotClient:
             data = response['data']['login']
             return data['userToken'], data['hasCat'], data['userId']
 
-    async def async_discover_cats(self, location_id: int) -> ClientResponse:
+    async def async_discover_cats(self, location_id: int) -> dict[str, Any]:
         """ Gets all cats linked to PurrSong account """
 
         if self.cookie is None or self.token is None:
@@ -151,8 +152,8 @@ class LavviebotClient:
             return response
 
 
-    async def async_discover_litter_boxes(self) -> ClientResponse:
-        """ Gets all litter boxes linked to PurrSong account """
+    async def async_discover_devices(self) -> dict[str, Any]:
+        """ Gets all iot devices linked to PurrSong account """
 
         if self.cookie is None or self.token is None:
             await self.login()
@@ -169,7 +170,7 @@ class LavviebotClient:
         dlb_payload = {
             "operationName": "PurrsongTabLocations",
             "variables": {},
-            "query": DISCOVER_LB
+            "query": DISCOVER_DEVICES
         }
         response = await self._post(headers, dlb_payload)
         if 'errors' in response:
@@ -188,21 +189,31 @@ class LavviebotClient:
 
         if self.cookie is None or self.token is None:
             await self.login()
-        litter_boxes = []
-        response = await self.async_discover_litter_boxes()
+        litter_boxes: list = []
+        lavvie_scanners: list = []
+        lavvie_tags: list = []
+        response = await self.async_discover_devices()
+        LOGGER.debug(f'Device discovery response: {response}')
         locations = response['data']['getLocations']
         for location in locations:
             for device in location['getIots']:
-                litter_boxes.append(device)
+                if device['lavviebot']:
+                    litter_boxes.append(device)
+                if device['lavvieScanner']:
+                    lavvie_scanners.append(device)
+                if device['lavvieTag']:
+                    lavvie_tags.append(device)
 
+        # Handle Litter boxes
         litter_box_data: dict[int, LitterBox] = {}
         litter_box: dict
+
         for litter_box in litter_boxes:
             device_id: int = litter_box.get('id')
             device_name: str = litter_box['lavviebot'].get('nickname')
 
-            state = await self.async_fetch_all_endpoints(device_id)
-
+            state = await self.async_get_litter_box_status(device_id)
+            LOGGER.debug(f'Litter box {device_name} response: {state}')
             iot_code_tail: str = state[0]['data']['getIotDetail'].get('iotCodeTail')
             latest_firmware: str = state[0]['data']['getIotDetail'].get('latestFirmwareVersion')
             router_ssid: str = state[0]['data']['getIotDetail']['lavviebot'].get('routerSSID')
@@ -228,11 +239,8 @@ class LavviebotClient:
                 tz=ZoneInfo('Asia/Seoul')).astimezone()
 
             """ Variables from Cat Usage Log """
-            if state[1]['data']['getLavviebotPoopRecord']['catUsageHistory'][00].get('nickname') is None:
-                last_cat_used_name: str = 'Unknown'
-            else:
-                last_cat_used_name: str = state[1]['data']['getLavviebotPoopRecord']['catUsageHistory'][00].get(
-                    'nickname')
+            nickname = state[1]['data']['getLavviebotPoopRecord']['catUsageHistory'][00].get('nickname')
+            last_cat_used_name = 'Unknown' if nickname is None else nickname
 
             last_used_duration: int = state[1]['data']['getLavviebotPoopRecord']['catUsageHistory'][00].get('duration')
             last_used: datetime = datetime.fromtimestamp(
@@ -277,6 +285,66 @@ class LavviebotClient:
                 error_log=error_log,
             )
 
+        # Handle LavvieScanners
+        lavvie_scanner_data: dict[int, LavvieScanner] = {}
+        lavvie_scanner: dict
+
+        for lavvie_scanner in lavvie_scanners:
+            device_id: int = lavvie_scanner.get('id')
+            device_name: str = lavvie_scanner['lavvieScanner'].get('nickname')
+
+            state = await self.async_get_iot_device_status(device_id, "lavvie_scanner")
+            LOGGER.debug(f'LavvieScanner {device_name} response: {state}')
+            iot_code_tail: str = state['data']['getIotDetail'].get('iotCodeTail')
+            latest_firmware: str = state['data']['getIotDetail'].get('latestFirmwareVersion')
+            router_ssid: str = state['data']['getIotDetail']['lavvieScanner'].get('routerSSID')
+            wifi_status: bool = state['data']['getIotDetail']['lavvieScanner'].get('wifiStatus')
+            current_firmware: str = state['data']['getIotDetail']['lavvieScanner']['recentLavvieScannerLog'].get(
+                'currentFirmwareVersion')
+            last_seen: datetime = datetime.fromtimestamp(
+                int(state['data']['getIotDetail']['lavvieScanner']['recentLavvieScannerLog'].get('creationTime')) / 1000,
+                tz=ZoneInfo('Asia/Seoul')).astimezone()
+
+            lavvie_scanner_data[device_id] = LavvieScanner(
+                device_id=device_id,
+                device_name=device_name,
+                iot_code_tail=iot_code_tail,
+                latest_firmware=latest_firmware,
+                router_ssid=router_ssid,
+                wifi_status=wifi_status,
+                current_firmware=current_firmware,
+                last_seen=last_seen
+            )
+
+        # Handle LavvieTags
+        lavvie_tag_data: dict[int, LavvieTag] = {}
+        lavvie_tag: dict
+
+        for lavvie_tag in lavvie_tags:
+            device_id: int = lavvie_tag.get('id')
+            device_name: str = lavvie_tag['lavvieTag'].get('nickname')
+
+            state = await self.async_get_iot_device_status(device_id, "lavvie_tag")
+            LOGGER.debug(f'LavvieTag {device_name} response: {state}')
+            iot_code_tail: str = state['data']['getIotDetail'].get('iotCodeTail')
+            latest_firmware: str = state['data']['getIotDetail'].get('latestFirmwareVersion')
+            current_firmware: str = state['data']['getIotDetail']['lavvieTag'].get(
+                'currentFirmwareVersion')
+            battery: int = state['data']['getIotDetail']['lavvieTag'].get('battery')
+            last_seen: datetime = datetime.fromtimestamp(
+                int(state['data']['getIotDetail']['lavvieTag'].get('recentConnectionTime')) / 1000,
+                tz=ZoneInfo('Asia/Seoul')).astimezone()
+
+            lavvie_tag_data[device_id] = LavvieTag(
+                device_id=device_id,
+                device_name=device_name,
+                iot_code_tail=iot_code_tail,
+                latest_firmware=latest_firmware,
+                current_firmware=current_firmware,
+                battery=battery,
+                last_seen=last_seen
+            )
+
         """ Get all cats """
 
         cats = []
@@ -284,89 +352,119 @@ class LavviebotClient:
         if self.has_cat:
             for location in locations:
                 response = await self.async_discover_cats(location['id'])
+                LOGGER.debug(f'Discovered cats response: {response}')
                 if location['hasUnknownCat']:
                     unknown_cat = {
                         'id': location['id'],
-                        'is_unknown': True
+                        'location_id': location['id'],
+                        'is_unknown': True,
+                        "has_lavvietag": False
                     }
                     cats.append(unknown_cat)
                 """ Append all cats to cat list. """
                 for cat in response['data']['getPets']:
                     cat["is_unknown"] = False
+                    cat["location_id"] = location['id']
+                    cat["has_lavvietag"] = True if cat['lavvieTag'] else False
                     cats.append(cat)
 
             cat: dict
             for cat in cats:
                 cat_id: int = cat.get('id')
+                cat_location_id: int = cat.get('location_id')
+                has_lavvietag: bool = cat.get('has_lavvietag')
+                # Today's Activity data
+                zoomies: int = 0
+                running: int = 0
+                walking: int = 0
+                resting: int = 0
+                sleeping: int = 0
 
+                # Handle getting Unknown cat data
                 if cat.get('is_unknown'):
                     cat_name: str = "Unknown"
-                    poop_data, duration_data, weight_data = await self.async_get_unknown_status(cat_id)
-                    if weight_data['data']['getUnknownPoopData']['today'] is None:
-                        cat_weight_pnds: float = 0.0
+                    unknown_status = await self.async_get_unknown_status(cat_id)
+                    LOGGER.debug(f'Unknown cat status response: {unknown_status}')
+                    today_weight = unknown_status['data']['weightData']
+                    today_duration = unknown_status['data']['poopDuration']
+                    today_count = unknown_status['data']['poopCount']
+                    if today_weight:
+                        cat_weight_pnds = 0.0 if today_weight['today'] is None else (today_weight['today'] / 455.1)
                     else:
-                        cat_weight_pnds: float = weight_data['data']['getUnknownPoopData']['today'] / 455.1
-                    if duration_data['data']['getUnknownPoopData']['today'] is None:
-                        duration: float = 0.0
+                        cat_weight_pnds = 0.0
+                    if today_duration:
+                        duration = 0.0 if today_duration['today'] is None else today_duration['today']
                     else:
-                        duration: float = duration_data['data']['getUnknownPoopData']['today']
-                    if poop_data['data']['getUnknownPoopData']['today'] is None:
-                        poop_count: int = 0
+                        duration = 0.0
+                    if today_count:
+                        poop_count = 0 if today_count['today'] is None else today_count['today']
                     else:
-                        poop_count: int = poop_data['data']['getUnknownPoopData']['today']
+                        poop_count = 0
+                    zoomies = zoomies
+                    running = running
+                    walking = walking
+                    resting = resting
+                    sleeping = sleeping
+                # Handle regular Cats
                 else:
                     cat_name: str = cat['cat'].get('nickname')
-                    poop_data, duration_data, weight_data = await self.async_get_cat_status(cat_id)
-                    if weight_data['data']['getPoopData']:
-                        if weight_data['data']['getPoopData']['today'] is None:
-                            cat_weight_pnds: float = 0.0
-                        else:
-                            cat_weight_pnds: float = weight_data['data']['getPoopData']['today'] / 455.1
+                    cat_status = await self.async_get_cat_status(cat_id, cat_location_id)
+                    LOGGER.debug(f'Cat {cat_name} status response: {cat_status}')
+                    weight_data = cat_status['data']['weightData']
+                    duration_data = cat_status['data']['poopDuration']
+                    count_data = cat_status['data']['poopCount']
+                    activity_data = cat_status['data']['todayActivity']
+                    if weight_data:
+                        cat_weight_pnds = 0.0 if weight_data['today'] is None else (weight_data['today'] / 455.1)
                     else:
-                        cat_weight_pnds: float = 0.0
-                    if duration_data['data']['getPoopData']:
-                        if duration_data['data']['getPoopData']['today'] is None:
-                            duration: float = 0.0
-                        else:
-                            duration: float = duration_data['data']['getPoopData']['today']
+                        cat_weight_pnds = 0.0
+                    if duration_data:
+                        duration = 0.0 if duration_data['today'] is None else duration_data['today']
                     else:
-                        duration: float = 0.0
-                    if poop_data['data']['getPoopData']:
-                        if poop_data['data']['getPoopData']['today'] is None:
-                            poop_count: int = 0
-                        else:
-                            poop_count: int = poop_data['data']['getPoopData']['today']
+                        duration = 0.0
+                    if count_data:
+                        poop_count = 0 if count_data['today'] is None else count_data['today']
                     else:
-                        poop_count: int = 0
+                        poop_count = 0
+                    # Today's Activity data. Only go through logic if cat has associated LavvieTAG
+                    if has_lavvietag:
+                        for data in activity_data:
+                            if data['woodadaCount']:
+                                zoomies += data['woodadaCount']
+                            if data['run']:
+                                running += data['run']
+                            if data['walk']:
+                                walking += data['walk']
+                            if data['rest']:
+                                sleeping += data['rest']
+                            if data['grooming']:
+                                resting += data['grooming']
 
                 cat_data[cat_id] = Cat(
                     cat_id=cat_id,
+                    location_id=cat_location_id,
                     cat_name=cat_name,
+                    has_lavvietag=has_lavvietag,
                     cat_weight_pnds=cat_weight_pnds,
                     duration=duration,
                     poop_count=poop_count,
+                    zoomies=zoomies,
+                    running=running,
+                    walking=walking,
+                    resting=resting,
+                    sleeping=sleeping,
                 )
 
-        purrsong_data = LavviebotData(litterboxes=litter_box_data, cats=cat_data)
+        purrsong_data = LavviebotData(
+            litterboxes=litter_box_data,
+            lavvie_scanners=lavvie_scanner_data,
+            lavvie_tags=lavvie_tag_data,
+            cats=cat_data
+        )
         LOGGER.debug(f'Purrsong API data returned: {purrsong_data}')
         return purrsong_data
 
-    async def async_fetch_all_endpoints(self, device_id: int) -> tuple[
-        BaseException | Any, BaseException | Any, BaseException | Any]:
-        """
-        Parallel request are made to all endpoints for each litter box.
-        returns a list containing latest status, and cat usage log
-        """
-
-        results = await asyncio.gather(*[
-            self.async_get_litter_box_status(device_id),
-            self.async_get_litter_box_cat_log(device_id),
-            self.async_get_litter_box_error_log(device_id),
-        ],
-                                       )
-        return results
-
-    async def async_get_litter_box_status(self, device_id: int) -> ClientResponse:
+    async def async_get_litter_box_status(self, device_id: int) -> list[dict[str, Any]]:
         """ Get most recent status available for litter box """
 
         if self.cookie is None or self.token is None:
@@ -381,27 +479,48 @@ class LavviebotClient:
             'Content-Type': CONTENT_TYPE,
             'User-Agent': USER_AGENT
         }
-        lbs_payload = {
-            "operationName": "GetLavviebotDetails",
-            "variables": {
-                "data": {
-                    "iotId": device_id
-                }
+        lbs_payload = [
+            {
+                "operationName": "GetLavviebotDetails",
+                "variables": {
+                    "data": {
+                        "iotId": device_id
+                    }
+                },
+                "query": LB_STATUS
             },
-            "query": LB_STATUS
-        }
-        response = await self._post(headers, lbs_payload)
-        if 'errors' in response:
-            message = response['errors'][0]['message']
-            if message == "Please login again.":
-                await self.login()
-                return await self.async_get_litter_box_status(device_id)
-            else:
-                raise LavviebotError(message)
-        else:
-            return response
+            {
+                "operationName": "GetLavviebotPoopRecord",
+                "variables": {
+                    "data": {
+                        "iotId": device_id
+                    }
+                },
+                "query": LB_CAT_LOG
+            },
+            {
+                "operationName": "GetIotErrorLog",
+                "variables": {
+                    "data": {
+                        "iotId": device_id
+                    }
+                },
+                "query": LB_ERROR_LOG
+            }
+        ]
 
-    async def async_get_litter_box_cat_log(self, device_id: int) -> ClientResponse:
+        response = await self._post(headers, lbs_payload)
+        for resp in response:
+            if 'errors' in resp:
+                message = resp['errors'][0]['message']
+                if message == "Please login again.":
+                    await self.login()
+                    return await self.async_get_litter_box_status(device_id)
+                else:
+                    raise LavviebotError(resp)
+        return response
+
+    async def async_get_litter_box_cat_log(self, device_id: int) -> dict[str, Any]:
         """ Get usage log that is associated with the litter box """
 
         if self.cookie is None or self.token is None:
@@ -436,7 +555,7 @@ class LavviebotClient:
         else:
             return response
 
-    async def async_get_litter_box_error_log(self, device_id: int) -> ClientResponse:
+    async def async_get_litter_box_error_log(self, device_id: int) -> dict[str, Any]:
         """ Get error log that is associated with the litter box """
 
         if self.cookie is None or self.token is None:
@@ -471,9 +590,57 @@ class LavviebotClient:
         else:
             return response
 
-    async def async_get_unknown_status(self, cat_id: int) -> tuple[
-        SimpleCookie | ClientResponse, SimpleCookie | ClientResponse, SimpleCookie | ClientResponse]:
-        """ Get most recent status for Unknown cat if present """
+    async def async_get_iot_device_status(self, iot_id: int, device_type: str) -> dict[str, Any]:
+        """
+        Get details about an IoT device. Only used for LavvieScanners and LavvieTAGs.
+        device_type needs to be one of lavvie_scanner or lavvie_tag.
+        """
+
+        operation_name: str | None = None
+        query: str | None = None
+
+        if device_type == "lavvie_scanner":
+            operation_name = "GetLavvieScannerDetails"
+            query = LAVVIE_SCANNER_STATUS
+        if device_type == "lavvie_tag":
+            operation_name = "GetLavvieTagDetails"
+            query = LAVVIE_TAG_STATUS
+
+        if self.cookie is None or self.token is None:
+            await self.login()
+
+        headers = {
+            'Accept': ACCEPT,
+            'Cookie': self.cookie,
+            'Accept-Encoding': ACCEPT_ENCODING,
+            'Accept-Language': ACCEPT_LANGUAGE,
+            'Authorization': self.token,
+            'Connection': CONNECTION,
+            'Content-Type': CONTENT_TYPE,
+            'User-Agent': USER_AGENT
+        }
+        iot_payload = {
+            "operationName": operation_name,
+            "variables": {
+                "data": {
+                    "iotId": iot_id
+                }
+            },
+            "query": query
+        }
+
+        iot_response = await self._post(headers, iot_payload)
+        if 'errors' in iot_response:
+            message = iot_response['errors'][0]['message']
+            if message == "Please login again.":
+                await self.login()
+                return await self.async_get_iot_device_status(iot_id, device_type)
+            else:
+                raise LavviebotError(message)
+        return iot_response
+
+    async def async_get_unknown_status(self, cat_id: int) -> dict[str, Any]:
+        """ Get most recent status for Unknown cat, if present. """
 
         if self.cookie is None or self.token is None:
             await self.login()
@@ -487,57 +654,29 @@ class LavviebotClient:
             'Content-Type': CONTENT_TYPE,
             'User-Agent': USER_AGENT
         }
-        poop_payload = {
+        unknown_payload = {
             "operationName": "GetUnknownPoopData",
             "variables": {
-                "data": {
-                    "graphType": "poopCount",
                     "locationId": cat_id,
-                    "period": "days"
-                }
+                    "days": "days",
+                    "weight": "weight",
+                    "poopCount": "poopCount",
+                    "poopDuration": "duration"
             },
             "query": UNKNOWN_STATUS
         }
 
-        duration_payload = {
-            "operationName": "GetUnknownPoopData",
-            "variables": {
-                "data": {
-                    "graphType": "duration",
-                    "locationId": cat_id,
-                    "period": "days"
-                }
-            },
-            "query": UNKNOWN_STATUS
-        }
-
-        weight_payload = {
-            "operationName": "GetUnknownPoopData",
-            "variables": {
-                "data": {
-                    "graphType": "weight",
-                    "locationId": cat_id,
-                    "period": "days"
-                }
-            },
-            "query": UNKNOWN_STATUS
-        }
-
-        poop_response = await self._post(headers, poop_payload)
-        duration_response = await self._post(headers, duration_payload)
-        weight_response = await self._post(headers, weight_payload)
-        if 'errors' in (response := poop_response, duration_response, weight_response):
-            message = response['errors'][0]['message']
+        unknown_response = await self._post(headers, unknown_payload)
+        if 'errors' in unknown_response:
+            message = unknown_response['errors'][0]['message']
             if message == "Please login again.":
                 await self.login()
                 return await self.async_get_unknown_status(cat_id)
             else:
                 raise LavviebotError(message)
-        else:
-            return poop_response, duration_response, weight_response
+        return unknown_response
 
-    async def async_get_cat_status(self, cat_id: int) -> tuple[
-        SimpleCookie | ClientResponse, SimpleCookie | ClientResponse, SimpleCookie | ClientResponse]:
+    async def async_get_cat_status(self, cat_id: int, cat_location_id: int) -> dict[str, Any]:
         """ Get most recent status for single cat """
 
         if self.cookie is None or self.token is None:
@@ -552,58 +691,32 @@ class LavviebotClient:
             'Content-Type': CONTENT_TYPE,
             'User-Agent': USER_AGENT
         }
-        poop_payload = {
-            "operationName": "GetPoopData",
+        cat_status_payload = {
+            "operationName": "GetCatHealthInfo",
             "variables": {
-                "data": {
-                    "graphType": "poopCount",
-                    "petId": cat_id,
-                    "period": "days"
-                }
+                "locationId": cat_location_id,
+                "petId": cat_id,
+                "days": "days",
+                "weight": "weight",
+                "poopCount": "poopCount",
+                "poopDuration": "duration"
             },
             "query": CAT_STATUS
         }
 
-        duration_payload = {
-            "operationName": "GetPoopData",
-            "variables": {
-                "data": {
-                    "graphType": "duration",
-                    "petId": cat_id,
-                    "period": "days"
-                }
-            },
-            "query": CAT_STATUS
-        }
-
-        weight_payload = {
-            "operationName": "GetPoopData",
-            "variables": {
-                "data": {
-                    "graphType": "weight",
-                    "petId": cat_id,
-                    "period": "days"
-                }
-            },
-            "query": CAT_STATUS
-        }
-
-        poop_response = await self._post(headers, poop_payload)
-        duration_response = await self._post(headers, duration_payload)
-        weight_response = await self._post(headers, weight_payload)
-        if 'errors' in (response := poop_response, duration_response, weight_response):
-            message = response['errors'][0]['message']
+        cat_status_response = await self._post(headers, cat_status_payload)
+        if 'errors' in cat_status_response:
+            message = cat_status_response['errors'][0]['message']
             if message == "Please login again.":
                 await self.login()
-                return await self.async_get_cat_status(cat_id)
+                return await self.async_get_cat_status(cat_id, cat_location_id)
             else:
                 raise LavviebotError(message)
-        else:
-            return poop_response, duration_response, weight_response
+        return cat_status_response
 
     async def _post(
             self, headers: dict[str, Any],
-            payload: dict[str, Any], is_cookie: bool | None = None) -> SimpleCookie | ClientResponse:
+            payload: dict[str, Any] | list[dict[str, Any]], is_cookie: bool | None = None) -> SimpleCookie | dict[str, Any]:
         """ Make Post API call to PurrSong servers """
 
         async with self._session.post(
@@ -612,7 +725,7 @@ class LavviebotClient:
             return await self._response(resp, is_cookie)
 
     @staticmethod
-    async def _response(resp: ClientResponse, is_cookie: bool) -> SimpleCookie | ClientResponse:
+    async def _response(resp: ClientResponse, is_cookie: bool) -> SimpleCookie | dict[str, Any]:
         """ Check response for any errors & return original response if none """
 
         # 500 status returned when current token has been rate-limited
@@ -637,4 +750,3 @@ class LavviebotClient:
         except Exception as e:
             raise LavviebotError(f'Could not return json: {e}') from e
         return response
-
