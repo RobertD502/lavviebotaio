@@ -75,9 +75,28 @@ LB_STATUS = "query GetLavviebotDetails($data: IotIdArgs!) {getIotDetail(data: $d
             "litterBottomAmount humidity temperature creationTime __typename} __typename} __typename}}"
 
 """ Query to get cat log associated with a specific litter box"""
-LB_CAT_LOG = "query GetLavviebotPoopRecord($data: GetIotCatRecordArgs!) {getLavviebotPoopRecord(data: $data) " \
-             "{mostUsedCat {count catMainPhoto nickname __typename} catUsageHistory " \
-             "{petId nickname catMainPhoto duration creationTime __typename} nextCursor __typename}}"
+LB_CAT_LOG = """
+query GetIotPoopRecord($data: GetIotPoopRecordArgs!) {
+  getIotPoopRecord(data: $data) {
+    mostUsedCat {
+      count
+      catMainPhoto
+      nickname
+      __typename
+    }
+    catUsageHistory {
+      petId
+      nickname
+      catMainPhoto
+      duration
+      creationTime
+      __typename
+    }
+    nextCursor
+    __typename
+  }
+}
+"""
 
 """ Query to get the error log for a litter boc """
 LB_ERROR_LOG = "query GetIotErrorLog($data: GetIotErrorLogArgs!) { getIotErrorLog(data: $data) { errorLogs { id status creationTime __typename } cursor hasMore __typename }}"
