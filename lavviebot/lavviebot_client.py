@@ -239,17 +239,17 @@ class LavviebotClient:
                 tz=ZoneInfo('Asia/Seoul')).astimezone()
 
             """ Variables from Cat Usage Log """
-            nickname = state[1]['data']['getLavviebotPoopRecord']['catUsageHistory'][00].get('nickname')
+            nickname = state[1]['data']['getIotPoopRecord']['catUsageHistory'][00].get('nickname')
             last_cat_used_name = 'Unknown' if nickname is None else nickname
 
-            last_used_duration: int = state[1]['data']['getLavviebotPoopRecord']['catUsageHistory'][00].get('duration')
+            last_used_duration: int = state[1]['data']['getIotPoopRecord']['catUsageHistory'][00].get('duration')
             last_used: datetime = datetime.fromtimestamp(
-                int(state[1]['data']['getLavviebotPoopRecord']['catUsageHistory'][00].get('creationTime')) / 1000,
+                int(state[1]['data']['getIotPoopRecord']['catUsageHistory'][00].get('creationTime')) / 1000,
                 tz=ZoneInfo('Asia/Seoul')).astimezone()
             # Get the oldest usage record for today in order to determine number of times litter box was used today
             today_date: date = date.today()
             today_usage_list: list = []
-            for usage_record in state[1]['data']['getLavviebotPoopRecord']['catUsageHistory']:
+            for usage_record in state[1]['data']['getIotPoopRecord']['catUsageHistory']:
                 epoch_to_date = datetime.fromtimestamp(int(usage_record['creationTime']) / 1000).date()
                 if epoch_to_date == today_date:
                     today_usage_list.append(usage_record)
@@ -490,7 +490,7 @@ class LavviebotClient:
                 "query": LB_STATUS
             },
             {
-                "operationName": "GetLavviebotPoopRecord",
+                "operationName": "GetIotPoopRecord",
                 "variables": {
                     "data": {
                         "iotId": device_id
