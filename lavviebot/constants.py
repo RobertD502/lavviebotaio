@@ -6,10 +6,10 @@ ACCEPT_ENCODING = 'gzip, deflate, br'
 ACCEPT_LANGUAGE = 'en-US,en;q=0.9'
 CONNECTION = 'keep-alive'
 CONTENT_TYPE = 'application/json'
-USER_AGENT = 'purrsongAppV3/2 CFNetwork/1325.0.1 Darwin/21.1.0'
+USER_AGENT = 'purrsongAppV3/2 CFNetwork/3826.400.120 Darwin/24.3.0'
 
 # Payload
-APP_VERSION = "3.8.3"
+APP_VERSION = "3.22.6"
 LANGUAGE = 'en'
 TIME_ZONE = 'America/New_York'
 
