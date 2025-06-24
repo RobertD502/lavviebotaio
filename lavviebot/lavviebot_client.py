@@ -16,7 +16,7 @@ from aiohttp import ClientResponse, ClientSession
 from .exceptions import LavviebotAuthError, LavviebotError, LavviebotRateLimit
 from .model import Cat, LavviebotData, LavvieScanner, LavvieTag, LitterBox
 from .constants import (ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE,
-                        APP_VERSION, BASE_URL, CAT_STATUS, CONNECTION,
+                        APP_VERSION, AUTO_LOGIN_QUERY, BASE_URL, CAT_STATUS, CONNECTION,
                         CONTENT_TYPE, COOKIE_QUERY, DISCOVER_CATS,
                         DISCOVER_DEVICES, LANGUAGE, LAVVIE_SCANNER_STATUS,
                         LAVVIE_TAG_STATUS, LB_CAT_LOG, LB_ERROR_LOG, LB_STATUS,
@@ -53,6 +53,40 @@ class LavviebotClient:
         self.token, self.has_cat, self.user_id = await self.get_token()
         return None
 
+    async def auto_login(self, cookie: str | SimpleCookie, token: str) -> None:
+        """Refresh token if you already have a valid one."""
+
+        self.cookie = cookie
+
+        headers = {
+            'Accept': ACCEPT,
+            'Authorization': token,
+            'Cookie': self.cookie,
+            'Accept-Encoding': ACCEPT_ENCODING,
+            'Accept-Language': ACCEPT_LANGUAGE,
+            'Connection': CONNECTION,
+            'Content-Type': CONTENT_TYPE,
+            'User-Agent': USER_AGENT
+        }
+
+        auto_login_payload = {
+            "operationName": "AutoLogin",
+            "variables": {
+                "data": {
+                    "timezoneCountry": "US",
+                    "appVersion": APP_VERSION,
+                    "timezone": "America/New_York"
+                }
+            },
+            "query": AUTO_LOGIN_QUERY
+        }
+        response = await self._post(headers, auto_login_payload)
+        LOGGER.debug(
+            f'Auto-Login response:\n'
+            f'{json.dumps(response, indent=4)}'
+        )
+        self.token = responde['data']['autoLogin']['userToken']
+
     async def get_cookie(self) -> SimpleCookie:
         """ Get cookie by checking PurrSong server status """
 
@@ -76,6 +110,10 @@ class LavviebotClient:
         }
 
         response = await self._post(headers, cookie_payload, is_cookie=True)
+        LOGGER.debug(
+            f'Cookie Request response:\n'
+            f'{json.dumps(response, indent=4)}'
+        )
         return response
 
     async def get_token(self) -> Tuple:
@@ -107,6 +145,10 @@ class LavviebotClient:
         }
 
         response = await self._post(headers, token_payload)
+        LOGGER.debug(
+            f'Token request response:\n'
+            f'{json.dumps(response, indent=4)}'
+        )
         if 'errors' in response:
             message = response['errors'][0]['message']
             raise LavviebotAuthError(message)
@@ -132,15 +174,19 @@ class LavviebotClient:
         dc_payload = {
             "operationName": "CatMain",
             "variables": {
-                "includeLavvieCare": True,
                 "includeLavvieTag": True,
                 "includeDetailCatInfo": True,
                 "includeLocation": True,
-                "locationId": location_id
+                "locationId": location_id,
+                "showUnknown": False
             },
             "query": DISCOVER_CATS
         }
         response = await self._post(headers, dc_payload)
+        LOGGER.debug(
+            f'Cat Discovery response:\n'
+            f'{json.dumps(response, indent=4)}'
+        )
         if 'errors' in response:
             message = response['errors'][0]['message']
             if message == "Please login again.":
@@ -173,6 +219,10 @@ class LavviebotClient:
             "query": DISCOVER_DEVICES
         }
         response = await self._post(headers, dlb_payload)
+        LOGGER.debug(
+            f'Device Discovery response:\n'
+            f'{json.dumps(response, indent=4)}'
+        )
         if 'errors' in response:
             message = response['errors'][0]['message']
             if message == "Please login again.":
@@ -193,7 +243,6 @@ class LavviebotClient:
         lavvie_scanners: list = []
         lavvie_tags: list = []
         response = await self.async_discover_devices()
-        LOGGER.debug(f'Device discovery response: {response}')
         locations = response['data']['getLocations']
         for location in locations:
             for device in location['getIots']:
@@ -213,7 +262,6 @@ class LavviebotClient:
             device_name: str = litter_box['lavviebot'].get('nickname')
 
             state = await self.async_get_litter_box_status(device_id)
-            LOGGER.debug(f'Litter box {device_name} response: {state}')
             iot_code_tail: str = state[0]['data']['getIotDetail'].get('iotCodeTail')
             latest_firmware: str = state[0]['data']['getIotDetail'].get('latestFirmwareVersion')
             router_ssid: str = state[0]['data']['getIotDetail']['lavviebot'].get('routerSSID')
@@ -352,7 +400,6 @@ class LavviebotClient:
         if self.has_cat:
             for location in locations:
                 response = await self.async_discover_cats(location['id'])
-                LOGGER.debug(f'Discovered cats response: {response}')
                 if location['hasUnknownCat']:
                     unknown_cat = {
                         'id': location['id'],
@@ -384,7 +431,6 @@ class LavviebotClient:
                 if cat.get('is_unknown'):
                     cat_name: str = "Unknown"
                     unknown_status = await self.async_get_unknown_status(cat_id)
-                    LOGGER.debug(f'Unknown cat status response: {unknown_status}')
                     today_weight = unknown_status['data']['weightData']
                     today_duration = unknown_status['data']['poopDuration']
                     today_count = unknown_status['data']['poopCount']
@@ -409,7 +455,6 @@ class LavviebotClient:
                 else:
                     cat_name: str = cat['cat'].get('nickname')
                     cat_status = await self.async_get_cat_status(cat_id, cat_location_id)
-                    LOGGER.debug(f'Cat {cat_name} status response: {cat_status}')
                     weight_data = cat_status['data']['weightData']
                     duration_data = cat_status['data']['poopDuration']
                     count_data = cat_status['data']['poopCount']
@@ -510,6 +555,10 @@ class LavviebotClient:
         ]
 
         response = await self._post(headers, lbs_payload)
+        LOGGER.debug(
+            f'Litter Box Status response({device_id}):\n'
+            f'{json.dumps(response, indent=4)}'
+        )
         for resp in response:
             if 'errors' in resp:
                 message = resp['errors'][0]['message']
@@ -545,6 +594,10 @@ class LavviebotClient:
             "query": LB_CAT_LOG
         }
         response = await self._post(headers, lbcl_payload)
+        LOGGER.debug(
+            f'LB Cat Log response({device_id}):\n'
+            f'{json.dumps(response, indent=4)}'
+        )
         if 'errors' in response:
             message = response['errors'][0]['message']
             if message == "Please login again.":
@@ -580,6 +633,10 @@ class LavviebotClient:
             "query": LB_ERROR_LOG
         }
         response = await self._post(headers, lbel_payload)
+        LOGGER.debug(
+            f'LB Error Log response({device_id}):\n'
+            f'{json.dumps(response, indent=4)}'
+        )
         if 'errors' in response:
             message = response['errors'][0]['message']
             if message == "Please login again.":
@@ -630,6 +687,10 @@ class LavviebotClient:
         }
 
         iot_response = await self._post(headers, iot_payload)
+        LOGGER.debug(
+            f'IOT Device Status response({iot_id}):\n'
+            f'{json.dumps(iot_response, indent=4)}'
+        )
         if 'errors' in iot_response:
             message = iot_response['errors'][0]['message']
             if message == "Please login again.":
@@ -667,6 +728,10 @@ class LavviebotClient:
         }
 
         unknown_response = await self._post(headers, unknown_payload)
+        LOGGER.debug(
+            f'Unknown Cat Status response({cat_id}):\n'
+            f'{json.dumps(unknown_response, indent=4)}'
+        )
         if 'errors' in unknown_response:
             message = unknown_response['errors'][0]['message']
             if message == "Please login again.":
@@ -705,6 +770,10 @@ class LavviebotClient:
         }
 
         cat_status_response = await self._post(headers, cat_status_payload)
+        LOGGER.debug(
+            f'Cat Status response({cat_id}):\n'
+            f'{json.dumps(cat_status_response, indent=4)}'
+        )
         if 'errors' in cat_status_response:
             message = cat_status_response['errors'][0]['message']
             if message == "Please login again.":
