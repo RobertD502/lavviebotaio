@@ -6,14 +6,25 @@ ACCEPT_ENCODING = 'gzip, deflate, br'
 ACCEPT_LANGUAGE = 'en-US,en;q=0.9'
 CONNECTION = 'keep-alive'
 CONTENT_TYPE = 'application/json'
-USER_AGENT = 'purrsongAppV3/2 CFNetwork/1325.0.1 Darwin/21.1.0'
+USER_AGENT = 'purrsongAppV3/1 CFNetwork/3826.500.131 Darwin/24.5.0'
 
 # Payload
-APP_VERSION = "3.8.3"
+APP_VERSION = "3.23.11"
 LANGUAGE = 'en'
 TIME_ZONE = 'America/New_York'
 
 TIMEOUT = 5 * 60
+
+"""Query for refreshing token if cookie and token has already been obtained."""
+AUTO_LOGIN_QUERY = """
+mutation AutoLogin($data: AutoLoginArgs!) {
+  autoLogin(data: $data) {
+    userId
+    userToken
+    __typename
+  }
+}
+"""
 
 """ Query needed to obtain cookies. """
 COOKIE_QUERY = "query CheckServerStatus($data: CheckServerStatusArgs!) {checkServerStatus(data: $data)}"
@@ -30,9 +41,17 @@ DISCOVER_DEVICES = '''query PurrsongTabLocations {getLocations {...LocationInfo 
 """ Query to discover cats """
 
 DISCOVER_CATS = """
-query CatMain($locationId: Int, $includeLavvieCare: Boolean = true, $includeLavvieTag: Boolean = true, $includeDetailCatInfo: Boolean = true, $includeLocation: Boolean = true) {
+query CatMain($locationId: Int!, $showUnknown: Boolean!, $includeLavvieTag: Boolean = true, $includeDetailCatInfo: Boolean = true, $includeLocation: Boolean = true) {
   getPets(data: {locationId: $locationId}) {
     ...PetList
+    __typename
+  }
+  purrsongUnknownPetMain(data: {locationId: $locationId}) @include(if: $showUnknown) {
+    ...UnknownCatMainInfo
+    __typename
+  }
+  getPetMainUnknownHealthData(data: {locationId: $locationId}) @include(if: $showUnknown) {
+    ...UnknownHealthData
     __typename
   }
 }
@@ -48,12 +67,8 @@ fragment PetList on Pet {
   cat {
     id
     nickname
+    catSpecies
     catMainPhoto
-    lavvieCare @include(if: $includeLavvieCare) {
-      recentStartDate
-      status
-      __typename
-    }
     catAge @include(if: $includeDetailCatInfo)
     catSex @include(if: $includeDetailCatInfo)
     catLifeStage @include(if: $includeDetailCatInfo)
@@ -62,6 +77,169 @@ fragment PetList on Pet {
     __typename
   }
   locationId @include(if: $includeLocation)
+  __typename
+}
+fragment UnknownCatMainInfo on PurrsongUnknownPetMainResponse {
+  location {
+    id
+    nickname
+    hasUnknownCat
+    hasLavviebot
+    locationRole
+    otherLocations {
+      ...LocationInfo
+      __typename
+    }
+    __typename
+  }
+  conditionScore
+  hourlyData {
+    poopCount
+    __typename
+  }
+  __typename
+}
+fragment LocationInfo on Location {
+  id
+  nickname
+  locationRole
+  hasLavvieBox
+  hasLavviebot
+  hasUnknownCat
+  overseaSubscription {
+    ...OverseaSubscription
+    __typename
+  }
+  getIots {
+    ...IotMainIot
+    __typename
+  }
+  __typename
+}
+fragment OverseaSubscription on LocationOverseasSubscription {
+  id
+  status
+  petIds
+  creationTime
+  currentSubscription {
+    productId
+    startDate
+    __typename
+  }
+  __typename
+}
+fragment IotMainIot on Iot {
+  id
+  latestFirmwareVersion
+  iotCodeTail
+  activeDomesticLavvieCare {
+    id
+    status
+    creationTime
+    dueDate
+    __typename
+  }
+  recentIotErrorLog {
+    ...IotErrorLog
+    __typename
+  }
+  lavviebot {
+    id
+    nickname
+    routerSSID
+    wifiStatus
+    macAddress
+    recentLavviebotLog {
+      motorState
+      topLitterStatus
+      wasteDrawerStatus
+      currentFirmwareVersion
+      __typename
+    }
+    __typename
+  }
+  lavvieScanner {
+    id
+    nickname
+    wifiStatus
+    recentLavvieScannerLog {
+      currentFirmwareVersion
+      __typename
+    }
+    __typename
+  }
+  lavvieTag {
+    id
+    nickname
+    currentFirmwareVersion
+    battery
+    recentConnectionTime
+    lavvieTagUid
+    recentLavvieTagLog {
+      id
+      __typename
+    }
+    __typename
+  }
+  lavvieBox {
+    id
+    nickname
+    routerSSID
+    wifiStatus
+    lavvieBoxLitterReplSchedule {
+      id
+      litterReplPoopCount
+      isActivate
+      __typename
+    }
+    cumulativePoopCount
+    recentLavvieBoxLog {
+      currentFirmwareVersion
+      __typename
+    }
+    hasInvalidWeight
+    purchaseType
+    __typename
+  }
+  iotSchedules {
+    ...IotScheduleManage
+    __typename
+  }
+  pet {
+    id
+    cat {
+      id
+      nickname
+      catMainPhoto
+      __typename
+    }
+    __typename
+  }
+  __typename
+}
+fragment IotErrorLog on IotErrorLog {
+  id
+  status
+  creationTime
+  __typename
+}
+fragment IotScheduleManage on IotSchedule {
+  id
+  item
+  cycle
+  criteriaDate
+  scheduleDDay
+  isIotScheduleDone
+  iotId
+  __typename
+}
+fragment UnknownHealthData on GetPetMainUnknownHealthDataResponse {
+  bowelData {
+    graphType
+    difference
+    value
+    __typename
+  }
   __typename
 }
 """
