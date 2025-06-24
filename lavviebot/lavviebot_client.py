@@ -23,7 +23,7 @@ from .constants import (ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE,
                         LAVVIE_TAG_STATUS, LB_CAT_LOG, LB_ERROR_LOG, LB_STATUS,
                         TIMEOUT, TIME_ZONE, TOKEN_QUERY, UNKNOWN_STATUS, USER_AGENT,)
 
-LOGGER = logging.getLogger("lavviebotaio")
+LOGGER = logging.getLogger("__name__")
 
 class LavviebotClient:
     """Lavviebot Client"""
